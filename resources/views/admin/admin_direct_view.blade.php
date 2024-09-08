@@ -56,7 +56,8 @@
                         <td>{{ $loop->iteration }}</td>
                          <td>{{ $row->user_id }} <br>{{ $row->name }} <br>
                             {{ $row->phone }}  <br>
-                            {{ $row->email }}</td>
+                            {{ $row->email }}<br>
+                           <b>{{ $row->package->name }} </b></td>
                         <td>{{date('d M,y', strtotime($row->created_at))  }}</td>
                         <td>{{date('d M,y', strtotime($row->activated_date))  }}</td>
 

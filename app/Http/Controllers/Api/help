@@ -50,4 +50,8 @@ diamond 8	package_id	8
 	help count	50																							
 	help received count	after received 3																							
 	amount	500000																							
-	received position	----------------------------------------																							
+	received position
+----------------------------------------																							
+
+INSERT INTO `users` (`id`, `user_id`, `name`, `email`, `phone`, `sponsor_id`, `phone_pay_no`, `registration_code`, `photo`, `password`, `token`, `is_active`, `is_green`, `package_id`, `deleted_at`, `7_level_payment_status`, `ustd_no`, `received_payments_count`, `activated_date`, `status`, `block_reason`, `green_date`, `created_at`, `star_complete`, `silver_complete`, `gold_complete`, `platinum_complete`, `ruby_complete`, `emrald_complete`, `diamond_complete`, `updated_at`) VALUES
+(186, 'PHC614264', 'test', 'qasim@gmail.com', '111111', 'PHC304057', '3333', 'HCqVf07w', NULL, '$2y$10$smTN8LfH7hFxVTmLRuIPzOgRF0DpZEpSQdUq0K1WMB4GD8v0nUdau', 'badf507825e61c462e1666366b2e0a0053ef8786004f53a15459f5036c853b26', '0', '0', 1, NULL, NULL, NULL, 0, NULL, 'InActive', NULL, NULL, '2024-09-04 11:26:05', '0', '0', '0', '0', '0', '0', '0', '2024-09-04 11:26:05');

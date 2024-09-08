@@ -14,7 +14,7 @@ class EPinTransfer extends Model
     protected $table ='e_pin_transfer';
     protected $fillable = [
          
-        'provided_by', 'member_id', 'member_name', 'balance', 'quantity', 'status', 'flag','e_pin'
+        'provided_by', 'member_id', 'member_name', 'balance', 'quantity', 'status', 'flag','e_pin','is_used'
     ];
     public function MemberData(){
         return $this->hasOne(User::class,'id','member_id');

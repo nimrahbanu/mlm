@@ -69,14 +69,16 @@
                                     data-toggle="toggle" data-on="Active" data-off="Block" data-onstyle="success"
                                     data-offstyle="danger"></a>
                             @endif -->
-                            <select onchange="customerStatus({{ $row->id }}, this.value)">
-                                <option value="Active" {{ $row->status == 'Active' ? 'selected' : '' }}>Active</option>
+                            <select onchange="customerStatus({{ $row->id }}, this.value)" class ="p-1 {{ $row->status == 'Active' ? 'bg-success' : '' }}">
+                                <option  value="Active" {{ $row->status == 'Active' ? 'selected' : '' }}>Active</option>
                                 <option value="InActive" {{ $row->status == 'InActive' ? 'selected' : '' }}>Inactive</option>
                                 <option value="Block" {{ $row->status == 'Block' ? 'selected' : '' }}>Block</option>
                             </select>
 
                         </td>
-                         <td> <b>{{ $row->user_id }}</b> <br>{{ $row->name }}</td>
+                         <td> <b>{{ $row->user_id }}</b> <br>{{ $row->name }}
+                         <b>{{ $row->package->package_name }} </b>
+                        </td>
                       
                         <td>{{date('d M,y', strtotime($row->created_at))  }}</td>
                         <td>{{ $row->activated_date ? date('d M,y', strtotime($row->activated_date)) : null  }}</td>

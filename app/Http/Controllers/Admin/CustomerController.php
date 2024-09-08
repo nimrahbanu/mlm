@@ -552,7 +552,7 @@ class CustomerController extends Controller
             $users_with_exactly_three_helps = HelpStar::select('receiver_id')
                 ->whereIn('receiver_id', $active_users)
                 ->groupBy('receiver_id')
-                ->havingRaw('COUNT(*) < 3')
+                ->havingRaw('COUNT(*) < 4')
                 ->pluck('receiver_id')
                 ->toArray();
         // DD($users_with_exactly_three_helps,$active_users);
@@ -638,13 +638,30 @@ class CustomerController extends Controller
         }
         
         $help_star_records = HelpStar::whereIn('receiver_id', $users_with_exactly_three_helps)->get();
-        $sender_id = 'PHC123456';
-        $sender_package =  User::where('user_id',$sender_id)->select('package_id')->first();
-$receiver = $sender_package->package_id + 1;
-        DD($sender_package, $receiver,1);
+
+        // DD($help_star_records);
             // dd($active_users);
             // Return the view with the prepared data
+      
+      
+      
+            $active_users = User::where('is_active', 1)
+            ->where('is_green', 1)
+            ->where('status', 'Active')
+            ->whereNull('deleted_at')
+            ->where('package_id', 2)
+            ->orderBy('activated_date')
+            ->limit(10) // Apply limit early
+            ->pluck('user_id') // Fetch only user_id
+            ->toArray();
+        
+            dd($active_users);
+      
+      
             return view('admin.redis_data_view', compact('success'));
+      
+      
+      
         }
         
         

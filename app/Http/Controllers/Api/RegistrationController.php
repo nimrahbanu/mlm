@@ -55,7 +55,7 @@ class RegistrationController extends BaseController
        
         $validator = Validator::make($request->all(), [
             'name' => 'required',
-            'email' => 'required|email|unique:users',
+            // 'email' => 'required|email|unique:users',
             'password' => 'required',
             're_password' => 'required|same:password',
             'sponsor_id' => 'required|exists:users,user_id',
@@ -80,27 +80,28 @@ class RegistrationController extends BaseController
         }
         try{
 
-            $sponsor = User::where('user_id',$request->sponsor_id)->select('user_id','sponsor_id','is_active','activated_date','status','is_green')->first();
-            if ($sponsor && $sponsor->is_active == '0') {
+            $sponsor = User::where('user_id',$request->sponsor_id)
+            ->select('id','user_id','sponsor_id','is_active','activated_date','status','is_green','package_id','updated_at')->first();
+           if ($sponsor && $sponsor->is_active == 0) {
                 if ($sponsor->package_id == 1) {
                     $sponsor->package_id = 2;
                 }
                 $sponsor->update([
-                    'is_active' => '1',
+                    'is_active' => 1,
                     'package_id' => $sponsor->package_id, // update package_id
                     // 'package_id' => '1',
                     'activated_date' => now()
                 ]);
-                if($sponsor->is_green == '1' && 'is_active' == '1'){
+                if($sponsor->is_green == 1 && 'is_active' == 1){
                     $sponsor->update([
                         'status' => 'Active',
                         // 'package_id' => '2',
                     ]);
                 }
             }
-           
+     
             if ($request->has('registration_code')) {
-                $epin = EPinTransfer::select('e_pin','is_used')->where('e_pin', $request->registration_code)
+                $epin = EPinTransfer::select('id','e_pin','is_used','updated_at')->where('e_pin', $request->registration_code)
                     ->where('is_used', '0')
                     ->first();
                  
@@ -264,22 +265,16 @@ class RegistrationController extends BaseController
     }
 
     public function active_users() {
-            $active_users = User::where('is_active', 1)
-            ->where('is_green', 1)
-            ->where('status', 'Active')
-            ->whereNull('deleted_at')
-            ->where('package_id', 2)
-            ->orderBy('activated_date')
-            ->pluck('user_id')
-            ->toArray();
-            $users_with_exactly_three_helps = HelpStar::select('receiver_id')
-                ->whereIn('receiver_id', $active_users)
-                ->groupBy('receiver_id')
-                ->havingRaw('COUNT(*) < 4')
-                ->limit(10) 
-                ->pluck('receiver_id')
-                ->toArray();
-                return $users_with_exactly_three_helps;
+        $active_users = User::where('is_active', 1)
+        ->where('is_green', 1)
+        ->where('status', 'Active')
+        ->whereNull('deleted_at')
+        ->where('package_id', 2)
+        ->orderBy('activated_date')
+        ->limit(10) // Apply limit early
+        ->pluck('user_id') // Fetch only user_id
+        ->toArray();
+        return $active_users;
     }
 
     public function level_upgrade_to_silver_users($sender_id) {
@@ -1100,8 +1095,8 @@ public function diamond_active_users() {
 
         $this->seven_level_sponser($receiverUserId);
         // Retrieve the receiver user and their package details
-        $receiver = User::select('package_id','user_id','received_payments_count')->where('user_id', $receiverUserId)->first(); // payment receive
-        $receiverPackage = Package::select('help','id','help_count')->where('id', $receiver->package_id)->first();
+        $receiver = User::where('user_id', $receiverUserId)->select('package_id','user_id','received_payments_count')->first(); // payment receive
+        $receiverPackage = Package::where('id', $receiver->package_id)->select('help','id','help_count')->first();
 
         $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',2)->count();
         if($helpReceived_count == 1){
