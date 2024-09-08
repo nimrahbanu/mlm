@@ -1,0 +1,53 @@
+star 2	package_id	2																							
+	help count	3																							
+	help received count	after received 2																							
+	amount	300																							
+	received position	3																							
+------------------------------------------																								
+																									
+silver 3	package_id	3																							
+	help count	9																							
+	help received count	 after received 5																							
+	amount	600																							
+	received position	4																							
+																									
+------------------------------------------																								
+																									
+gold 4	package_id	4																							
+	help count	10																							
+	help received count	after received 5																							
+	amount	2000																							
+	received position	5																							
+																									
+------------------------------------------																								
+																									
+platinum 5	package_id	5																							
+	help count	20																							
+	help received count	after received 5																							
+	amount	6000																							
+	received position	6																							
+																									
+------------------------------------------																								
+																									
+ruby 6	package_id	6																							
+	help count	30																							
+	help received count	after received 7																							
+	amount	20000																							
+	received position	7																							
+------------------------------------------																								
+																									
+																									
+emrald 7	package_id	7																							
+	help count	40																							
+	help received count	after received 7																							
+	amount	100000																							
+	received position	8																							
+																									
+																									
+------------------------------------------																								
+																									
+diamond 8	package_id	8																							
+	help count	50																							
+	help received count	after received 3																							
+	amount	500000																							
+	received position	----------------------------------------																							
