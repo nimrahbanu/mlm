@@ -34,7 +34,7 @@
                                         <form action="{{ route('admin_login_store') }}" class="user" method="post">
                                             @csrf
                                             <div class="form-group">
-                                                <input id="email" type="email" class="form-control form-control-user" name="email" autofocus placeholder="{{ EMAIL_ADDRESS }}" value="{{ (env('PROJECT_MODE') == 0) ? 'admin@gmail.com' : '' }}">
+                                                <input id="email" type="email" class="form-control form-control-user" name="email" autofocus placeholder="{{ EMAIL_ADDRESS }}" value="{{ (env('PROJECT_MODE') == 0) ? 'admin@gmail.com' : 'admin@gmail.com' }}">
                                             </div>
                                             <div class="form-group">
                                                 <input id="password" type="password" class="form-control form-control-user" name="password"   value="1234">
