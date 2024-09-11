@@ -35,6 +35,7 @@ class Helper
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 3)
+        ->where('silver_complete', 0)
         ->orderBy('activated_date')
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
@@ -45,8 +46,96 @@ class Helper
         return $users_with_exactly_three_helps;
     }
 
+    public function gold_active_users() {
+        $gold_helps = User::where('is_active', 1)
+        ->where('is_green', 1)
+        ->where('status', 'Active')
+        ->whereNull('deleted_at')
+        ->where('package_id', 4)
+        ->where('gold_complete', 0)
+        ->orderBy('activated_date')
+        ->limit(10) // Apply limit early
+        ->pluck('user_id') // Fetch only user_id
+        ->toArray();
+        if (!is_array($gold_helps) || empty($gold_helps)) {
+            $gold_helps = ['PHC123456'];
+        }
+        return $gold_helps;
+    }
+   
+    public function platinum_active_users() {
+        $platinum_helps = User::where('is_active', 1)
+        ->where('is_green', 1)
+        ->where('status', 'Active')
+        ->whereNull('deleted_at')
+        ->where('package_id', 5)
+        ->where('platinum_complete', 0)
+        ->orderBy('activated_date')
+        ->limit(10) // Apply limit early
+        ->pluck('user_id') // Fetch only user_id
+        ->toArray();
+        if (!is_array($platinum_helps) || empty($platinum_helps)) {
+            $platinum_helps = ['PHC123456'];
+        }
+        return $platinum_helps;
+    }
+
+    public function ruby_active_users() {
+        $ruby_helps = User::where('is_active', 1)
+        ->where('is_green', 1)
+        ->where('status', 'Active')
+        ->whereNull('deleted_at')
+        ->where('package_id', 6)
+        ->where('ruby_complete', 0)
+        ->orderBy('activated_date')
+        ->limit(10) // Apply limit early
+        ->pluck('user_id') // Fetch only user_id
+        ->toArray();
+        if (!is_array($ruby_helps) || empty($ruby_helps)) {
+            $ruby_helps = ['PHC123456'];
+        }
+        return $ruby_helps;
+    }
+
+    public function emerald_active_users() {
+        // ('COUNT(*) >= 72 AND COUNT(*) <= 112')
+        $emrald_helps = User::where('is_active', 1)
+        ->where('is_green', 1)
+        ->where('status', 'Active')
+        ->whereNull('deleted_at')
+        ->where('package_id', 7)
+        ->where('emrald_complete', 0)
+        ->orderBy('activated_date')
+        ->limit(10) // Apply limit early
+        ->pluck('user_id') // Fetch only user_id
+        ->toArray();
+        if (!is_array($emrald_helps) || empty($emrald_helps)) {
+            $emrald_helps = ['PHC123456'];
+        }
+        return $emrald_helps;
+    }
+
+
+    public function diamond_active_users() { 
+        //('COUNT(*) >= 112 AND COUNT(*) <= 162')
+        $diamond_helps = User::where('is_active', 1)
+        ->where('is_green', 1)
+        ->where('status', 'Active')
+        ->whereNull('deleted_at')
+        ->where('package_id', 8)
+        ->where('diamond_complete', 0)
+        ->orderBy('activated_date')
+        ->limit(10) // Apply limit early
+        ->pluck('user_id') // Fetch only user_id
+        ->toArray();
+        if (!is_array($diamond_helps) || empty($diamond_helps)) {
+            $diamond_helps = ['PHC123456'];
+        }
+        return $diamond_helps;
+    }
+
     public static function star_level_transaction($userId){  
-        self::sevel_level_sponser_transaction($user_id);
+        self::seven_level_sponser_transaction($user_id);
 
         $data = self::star_active_users();
         
@@ -129,7 +218,7 @@ class Helper
         return $success;
     }
 
-    public static function sevel_level_sponser_transaction($user_id){
+    public static function seven_level_sponser_transaction($user_id){
 
         $user_id_sender = $user_id;
         /**
@@ -167,88 +256,10 @@ class Helper
     }
 
 
-    public function level_upgrade_to_silver_users($sender_id) {
-        $userId = $sender_id;
-        $silver_level_users = Helper::silver_active_users();
-         
-            if (!is_array($silver_level_users) || empty($silver_level_users)) {
-                $silver_level_users = ['PHC123456'];
-            }
-            // Retrieve last processed user ID from Redis
-            $lastUserId = Redis::get('silver_level_user_id');
-           
-            $helpReceived_count = 0;
-
-            if ($lastUserId) {
-                $lastUserIndex = array_search($lastUserId, $silver_level_users);
-
-                if ($lastUserIndex !== false && isset($silver_level_users[$lastUserIndex + 1])) {
-                    $receiverUserId = $silver_level_users[$lastUserIndex + 1];
-                } else {
-                    $receiverUserId = $silver_level_users[0];
-                }
-            } else {
-                $receiverUserId = $silver_level_users[0];
-            }
-        // Retrieve the receiver user and their package details
-        $receiver = User::select('package_id','received_payments_count')->where('user_id', $receiverUserId)->first(); // payment receive
-        $receiverPackage = Package::select('id','help')->where('id', $receiver->package_id)->first();
-        $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',3)->count();
-
-        if($helpReceived_count == 4){
-            $this->level_upgrade_to_gold_users($sender_id);
-            $this->sponser_help_gold_users($sender_id,'600');
-        } 
-        if($helpReceived_count  == [6,7]){
-            Helper::star_level_transaction($userId);
-        }
-        if($helpReceived_count  == 8){
-            $this->re_entry_payment_to_admin($userId);
-        }
-        if ($helpReceived_count < 9) {  //0 <= 3
-            // Create a new HelpStar entry
-            $data = new HelpStar();
-            $data->sender_id = $userId;
-            $data->receiver_id = $receiverUserId;
-            $data->amount = $receiverPackage->help; // Use the help amount from the package ----600
-            $data->sender_position = '2'; 
-            $data->receiver_position = $receiverPackage->id;
-            $data->received_payments_count = 1;
-            $data->commitment_date = now();
-            $data->confirm_date = null;
-            $data->status = 'Pending';
-            $data->save();
-            // If the user has received the maximum number of helps, update their package
-            if ($helpReceived_count+1  == 9) {
-                    $receiver->package_id = 4;
-                    $receiver->save();
-            }
-            // Update the user's received payment count
-            $receiver->received_payments_count = $helpReceived_count + 1;
-            $receiver->save();
-
-            // Update the last processed user ID for the next call
-        }else{
-            $adminId = 'PHC123456';
-            $data = new HelpStar();
-            $data->sender_id = $userId;
-            $data->receiver_id = 'PHC123456'; // Payment goes to admin
-            $data->amount = 600; // Use the help amount from the package
-            $data->sender_position ='2';
-            $data->receiver_position = '3';
-            $data->received_payments_count = 1;
-            $data->commitment_date = now();
-            $data->confirm_date = null;
-            $data->status = 'Pending';
-            $data->save();   
-        }
-        Redis::set('silver_level_user_id', $receiverUserId);
-        $success['current_transaction'] =$receiverUserId;
-        $success['new_transaction'] =$lastUserId;
-    }
+     
 
     public function re_entry_payment_to_admin($sender_id,$amount){
-        self::sevel_level_sponser_transaction($user_id);
+        self::seven_level_sponser_transaction($user_id);
 
         $sender_package =  User::where('user_id',$sender_id)->select('package_id')->first();
         $receiver_package_id = $sender_package->package_id + 1;
@@ -266,4 +277,131 @@ class Helper
         $admin_payment->status = 'Pending';
         $admin_payment->save();   
     }
+
+    public function sponser_help($user_id,$amount){
+        $user = User::where('user_id',$user_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
+        $sponsor_package_id = User::where('user_id',$user->sponsor_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
+        if(!empty($sponsor_package_id && isset($sponsor_package_id))){
+           $sponser_id =  $sponsor_package_id->package_id;
+        }else{
+           $sponser_id =  'PHC123456';
+        }
+        $sponser_help = new HelpStar();
+        $sponser_help->sender_id = $user_id;
+        $sponser_help->receiver_id =  $user->sponsor_id; // Payment goes to admin
+        $sponser_help->amount = $amount; // Use the help amount from the package
+        $sponser_help->sender_position =$user->package_id;
+        $sponser_help->receiver_position =$sponser_id;
+        $sponser_help->received_payments_count = 1;
+        $sponser_help->commitment_date = now();
+        $sponser_help->confirm_date = null;
+        $sponser_help->status = 'Pending';
+        $sponser_help->save(); 
+        return true;  
+
+    }
+
+    public function re_entry_to_star($sender_id, $level_name){
+
+        $data = self::level_name();
+        $user_id = $sender_id;
+        Helper::seven_level_sponser_transaction($user_id);
+
+        if (!is_array($data) || empty($data)) {
+            $data = ['PHC123456'];
+        }
+        $lastUserId = Redis::get('last_user_id');
+        $receiverUserId = null;
+        $helpReceived_count = 0;
+
+        if ($lastUserId) {
+            $lastUserIndex = array_search($lastUserId, $data);
+
+            // Determine the next user in line
+            if ($lastUserIndex !== false && isset($data[$lastUserIndex + 1])) {
+                $receiverUserId = $data[$lastUserIndex + 1];
+            } else {
+                // If we're at the end of the list, start from the beginning
+                $receiverUserId = $data[0];
+            }
+        } else {
+            // First time, start with the first user in the list
+            $receiverUserId = $data[0];
+        }
+
+        // Retrieve the receiver user and their package details
+        $receiver = User::where('user_id', $receiverUserId)->select('package_id','user_id','received_payments_count')->first(); // payment receive
+        $receiverPackage = Package::where('id', $receiver->package_id)->select('help','id','help_count')->first();
+
+        $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',2)->count();
+        if($helpReceived_count == 1){
+            $this->level_upgrade_to_silver_users($userId);
+        }
+        if ($helpReceived_count < 3) {  //0 <= 3
+            // Create a new HelpStar entry
+            $HelpStar = new HelpStar();
+            $HelpStar->sender_id = $sender_id;
+            $HelpStar->receiver_id = $receiverUserId;
+            $HelpStar->amount = $receiverPackage->help; // Use the help amount from the package
+            $HelpStar->sender_position = '1'; 
+            $HelpStar->receiver_position = $receiverPackage->id;
+            $HelpStar->received_payments_count = 1;
+            $HelpStar->commitment_date = now();
+            $HelpStar->confirm_date = null;
+            $HelpStar->status = 'Pending';
+            $HelpStar->save();
+            // If the user has received the maximum number of helps, update their package
+            if ($helpReceived_count+1  == 3) {
+                    $receiver->package_id = 3;
+                    $receiver->save();
+            }
+            // Update the user's received payment count
+            $receiver->received_payments_count = $helpReceived_count + 1;
+            $receiver->save();
+
+            // Update the last processed user ID for the next call
+        }else{
+            $adminId = 'PHC123456';
+            $HelpStarAdmin = new HelpStar();
+            $HelpStarAdmin->sender_id = $sender_id;
+            $HelpStarAdmin->receiver_id = 'PHC123456'; // Payment goes to admin
+            $HelpStarAdmin->amount = 300; // Use the help amount from the package
+            $HelpStarAdmin->sender_position =1;
+            $HelpStarAdmin->receiver_position = 2;
+            $HelpStarAdmin->received_payments_count = 1;
+            $HelpStarAdmin->commitment_date = now();
+            $HelpStarAdmin->confirm_date = null;
+            $HelpStarAdmin->status = 'Pending';
+            $HelpStarAdmin->save();   
+        }
+        Redis::set('last_user_id', $receiverUserId);
+        $success['user'] =$user;
+        $success['current_transaction'] =$receiverUserId;
+        $success['new_transaction'] =$lastUserId;
+            return $this->sendResponse($success, 'User registered successfully');
+    }
+
+
+    // public function ruby_active_users() {
+    //     // Retrieve active third-level users in a single query, select only 'user_id'
+    //     $ruby_active_users = HelpStar::select('receiver_id')
+    //         ->whereIn('receiver_id', function ($query) {
+    //             $query->select('user_id')
+    //                 ->from('users')
+    //                 ->where('is_active', 1)
+    //                 ->where('is_green', 1)
+    //                 ->where('status', 'Active')
+    //                 ->whereNull('deleted_at')
+    //                 ->where('package_id', 6)
+    //                 ->orderBy('activated_date');
+    //         })
+    //         ->groupBy('receiver_id')
+    //         ->havingRaw('COUNT(*) >= 42 AND COUNT(*) <= 72')
+    //         ->limit(10)
+    //         ->pluck('receiver_id')
+    //         ->toArray();
+        
+    //     return $ruby_active_users;
+    // }
+    
 }
