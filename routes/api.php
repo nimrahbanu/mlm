@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
+Route::get('sponser_help', [RegistrationController::class,'sponser_help']); //dome
 Route::post('star_active_users', [RegistrationController::class,'star_active_users']); //dome
 Route::post('customer/registration/{id?}', [RegistrationController::class,'registration_store']); //dome
 

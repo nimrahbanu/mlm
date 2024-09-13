@@ -39,6 +39,7 @@ class ComposerStaticInit62b2129e53c2bdff818635302405859e
         'c72349b1fe8d0deeedd3a52e8aa814d8' => __DIR__ . '/..' . '/mockery/mockery/library/helpers.php',
         'ce9671a430e4846b44e1c68c7611f9f5' => __DIR__ . '/..' . '/mockery/mockery/library/Mockery.php',
         'ec07570ca5a812141189b1fa81503674' => __DIR__ . '/..' . '/phpunit/phpunit/src/Framework/Assert/Functions.php',
+        'd21d43db5f6e840ee7b10744ec7fdf66' => __DIR__ . '/../..' . '/app/Helpers/helpers.php',
     );
 
     public static $prefixLengthsPsr4 = array (
@@ -551,6 +552,7 @@ class ComposerStaticInit62b2129e53c2bdff818635302405859e
         'App\\Console\\Kernel' => __DIR__ . '/../..' . '/app/Console/Kernel.php',
         'App\\Exceptions\\Handler' => __DIR__ . '/../..' . '/app/Exceptions/Handler.php',
         'App\\Http\\Controllers\\Admin\\AmenityController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/AmenityController.php',
+        'App\\Http\\Controllers\\Admin\\BaseController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/BaseController.php',
         'App\\Http\\Controllers\\Admin\\BlogController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/BlogController.php',
         'App\\Http\\Controllers\\Admin\\CategoryController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/CategoryController.php',
         'App\\Http\\Controllers\\Admin\\ClearDatabaseController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/ClearDatabaseController.php',
@@ -589,8 +591,11 @@ class ComposerStaticInit62b2129e53c2bdff818635302405859e
         'App\\Http\\Controllers\\Admin\\SocialMediaItemController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/SocialMediaItemController.php',
         'App\\Http\\Controllers\\Admin\\TestimonialController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/TestimonialController.php',
         'App\\Http\\Controllers\\Admin\\UnderConstructionPropertyController' => __DIR__ . '/../..' . '/app/Http/Controllers/Admin/UnderConstructionPropertyController.php',
+        'App\\Http\\Controllers\\Api\\BaseController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/BaseController.php',
         'App\\Http\\Controllers\\Api\\CustomerAuthController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/CustomerAuthController.php',
+        'App\\Http\\Controllers\\Api\\CustomerController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/CustomerController.php',
         'App\\Http\\Controllers\\Api\\RegistrationController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/RegistrationController.php',
+        'App\\Http\\Controllers\\Api\\UserActiveController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/UserActiveController.php',
         'App\\Http\\Controllers\\Api\\UserController' => __DIR__ . '/../..' . '/app/Http/Controllers/Api/UserController.php',
         'App\\Http\\Controllers\\Controller' => __DIR__ . '/../..' . '/app/Http/Controllers/Controller.php',
         'App\\Http\\Controllers\\Front\\AboutController' => __DIR__ . '/../..' . '/app/Http/Controllers/Front/AboutController.php',

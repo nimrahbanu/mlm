@@ -1007,6 +1007,8 @@ Route::get('admin/customer/delete/{id}', [CustomerControllerForAdmin::class,'des
     ->name('admin_customer_delete');
 
 Route::get('admin/customer-status/{id}', [CustomerControllerForAdmin::class,'change_status']);
+Route::get('admin/customer-active-date-status/{id}', [CustomerControllerForAdmin::class,'active_date_status']);
+Route::get('admin/customer-joining-date-status/{id}', [CustomerControllerForAdmin::class,'joining_date_status']);
 
 
 

@@ -8,7 +8,12 @@ use App\Models\Review;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use App\Models\HelpStar;
-
+use App\Models\HelpSilver;
+use App\Models\HelpGold;
+use App\Models\HelpPlatinum;
+use App\Models\HelpRuby;
+use App\Models\HelpEmrald;
+use App\Models\HelpDiamond;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use DB;
@@ -213,6 +218,22 @@ class CustomerController extends Controller
     public function change_status(Request $request, $id) {
         $customer = User::find($id);
             $customer->status = $request->status;
+            $message=SUCCESS_ACTION;
+            $customer->save();
+        return response()->json($message);
+    }
+
+    public function active_date_status(Request $request, $id) {
+        $customer = User::find($id);
+            $customer->is_active = $request->is_active;
+            $message=SUCCESS_ACTION;
+            $customer->save();
+        return response()->json($message);
+    }
+
+    public function joining_date_status(Request $request, $id) {
+        $customer = User::find($id);
+            $customer->is_green = $request->is_green;
             $message=SUCCESS_ACTION;
             $customer->save();
         return response()->json($message);
@@ -579,6 +600,42 @@ class CustomerController extends Controller
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
                 ->groupBy('receiver_id');
+
+                $HelpSilver = HelpSilver::whereIn('receiver_id', $data)
+                ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
+                ->groupBy('receiver_id', 'receiver_position')
+                ->get()
+                ->groupBy('receiver_id');
+
+                $HelpGold = HelpGold::whereIn('receiver_id', $data)
+                ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
+                ->groupBy('receiver_id', 'receiver_position')
+                ->get()
+                ->groupBy('receiver_id');
+
+                $HelpPlatinum = HelpPlatinum::whereIn('receiver_id', $data)
+                ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
+                ->groupBy('receiver_id', 'receiver_position')
+                ->get()
+                ->groupBy('receiver_id');
+
+                $HelpRuby = HelpRuby::whereIn('receiver_id', $data)
+                ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
+                ->groupBy('receiver_id', 'receiver_position')
+                ->get()
+                ->groupBy('receiver_id');
+
+                $HelpEmrald = HelpEmrald::whereIn('receiver_id', $data)
+                ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
+                ->groupBy('receiver_id', 'receiver_position')
+                ->get()
+                ->groupBy('receiver_id');
+
+                $HelpDiamond = HelpDiamond::whereIn('receiver_id', $data)
+                ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
+                ->groupBy('receiver_id', 'receiver_position')
+                ->get()
+                ->groupBy('receiver_id');
         
             // Initialize arrays for different positions
             $helpReceivedCounts = $silver = $gold = $platinum = $ruby = $emrald = $diamond = [];
@@ -586,12 +643,12 @@ class CustomerController extends Controller
             // Populate the arrays based on the help data
             foreach ($data as $id) {
                 $helpReceivedCounts[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 2)->sum('count') : 0;
-                $silver[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 3)->sum('count') : 0;
-                $gold[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 4)->sum('count') : 0;
-                $platinum[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 5)->sum('count') : 0;
-                $ruby[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 6)->sum('count') : 0;
-                $emrald[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 7)->sum('count') : 0;
-                $diamond[$id] = isset($helpData[$id]) ? $helpData[$id]->where('receiver_position', 8)->sum('count') : 0;
+                $silver[$id] = isset($HelpSilver[$id]) ? $HelpSilver[$id]->where('receiver_position', 3)->sum('count') : 0;
+                $gold[$id] = isset($HelpGold[$id]) ? $HelpGold[$id]->where('receiver_position', 4)->sum('count') : 0;
+                $platinum[$id] = isset($HelpPlatinum[$id]) ? $HelpPlatinum[$id]->where('receiver_position', 5)->sum('count') : 0;
+                $ruby[$id] = isset($HelpRuby[$id]) ? $HelpRuby[$id]->where('receiver_position', 6)->sum('count') : 0;
+                $emrald[$id] = isset($HelpEmrald[$id]) ? $HelpEmrald[$id]->where('receiver_position', 7)->sum('count') : 0;
+                $diamond[$id] = isset($HelpDiamond[$id]) ? $HelpDiamond[$id]->where('receiver_position', 8)->sum('count') : 0;
             }
         
             // Retrieve the last processed user ID from Redis
@@ -615,29 +672,29 @@ class CustomerController extends Controller
             // $active_users =   HelpStar::select('receiver_id')->count(3);
 
             // $active_users =   $active_users ?  $active_users : ['PHC123456'];
-            $active_users = User::where('is_active', 1)
-            ->where('is_green', 1)
-            ->where('status', 'Active')
-            ->whereNull('deleted_at')
-            ->where('package_id', 2)
-            ->orderBy('activated_date')
-            ->pluck('user_id')
-            ->toArray();
+        //     $active_users = User::where('is_active', 1)
+        //     ->where('is_green', 1)
+        //     ->where('status', 'Active')
+        //     ->whereNull('deleted_at')
+        //     ->where('package_id', 2)
+        //     ->orderBy('activated_date')
+        //     ->pluck('user_id')
+        //     ->toArray();
         
-        // Ensure $active_users is not empty
-        if (!empty($active_users)) {
-            // Get users whose IDs appear exactly 3 times in the HelpStar table
-            $users_with_exactly_three_helps = HelpStar::select('receiver_id')
-                ->whereIn('receiver_id', $active_users)
-                ->groupBy('receiver_id')
-                ->havingRaw('COUNT(*) > 3')
-                ->pluck('receiver_id')
-                ->toArray();
-        } else {
-            $users_with_exactly_three_helps = [];
-        }
+        // // Ensure $active_users is not empty
+        // if (!empty($active_users)) {
+        //     // Get users whose IDs appear exactly 3 times in the HelpStar table
+        //     $users_with_exactly_three_helps = HelpStar::select('receiver_id')
+        //         ->whereIn('receiver_id', $active_users)
+        //         ->groupBy('receiver_id')
+        //         ->havingRaw('COUNT(*) > 3')
+        //         ->pluck('receiver_id')
+        //         ->toArray();
+        // } else {
+        //     $users_with_exactly_three_helps = [];
+        // }
         
-        $help_star_records = HelpStar::whereIn('receiver_id', $users_with_exactly_three_helps)->get();
+        // $help_star_records = HelpStar::whereIn('receiver_id', $users_with_exactly_three_helps)->get();
 
         // DD($help_star_records);
             // dd($active_users);
@@ -645,19 +702,16 @@ class CustomerController extends Controller
       
       
       
-            $active_users = User::where('is_active', 1)
-            ->where('is_green', 1)
-            ->where('status', 'Active')
-            ->whereNull('deleted_at')
-            ->where('package_id', 2)
-            ->orderBy('activated_date')
-            ->limit(10) // Apply limit early
-            ->pluck('user_id') // Fetch only user_id
-            ->toArray();
+            // $active_users = User::where('is_active', 1)
+            // ->where('is_green', 1)
+            // ->where('status', 'Active')
+            // ->whereNull('deleted_at')
+            // ->where('package_id', 2)
+            // ->orderBy('activated_date')
+            // ->limit(10) // Apply limit early
+            // ->pluck('user_id') // Fetch only user_id
+            // ->toArray();
         
-            dd($active_users);
-      
-      
             return view('admin.redis_data_view', compact('success'));
       
       

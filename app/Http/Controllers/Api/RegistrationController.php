@@ -10,6 +10,12 @@ use App\Models\Bank;
 use App\Models\Payment;
 use App\Models\Package;
 use App\Models\HelpStar;
+use App\Models\HelpSilver;
+use App\Models\HelpGold;
+use App\Models\HelpPlatinum;
+use App\Models\HelpRuby;
+use App\Models\HelpEmrald;
+use App\Models\HelpDiamond;
 use App\Models\Faq;
 use App\Models\Support;
 use App\Models\EmailTemplate;
@@ -133,17 +139,16 @@ class RegistrationController extends BaseController
             // DB::commit();
 
         } catch (\Exception $e) {
+            dd($e);
             // DB::rollBack();
             return $this->sendError('Unable to register. Please try again.');
         }
     }
 
-    public static function star_level_transaction($userId){  
-        $userId = $userId;
-       $seven_level =  Helper::seven_level_sponser_transaction($user_id);
+    public function star_level_transaction($userId){  
+       $seven_level =  Helper::seven_level_sponser_transaction($userId);
 
         $data = Helper::star_active_users();
-        
         $lastUserId = Redis::get('last_user_id');
         $receiverUserId = null;
         $helpReceived_count = 0;
@@ -164,7 +169,7 @@ class RegistrationController extends BaseController
         }
 
         // Retrieve the receiver user and their package details
-        $receiver = User::select('package_id','user_id','received_payments_count')->where('user_id', $receiverUserId)->first(); // payment receive
+        $receiver = User::select('package_id','user_id','received_payments_count','id')->where('user_id', $receiverUserId)->first(); // payment receive
         $receiverPackage = Package::select('help','id','help_count')->where('id', $receiver->package_id)->first();
 
         // Check how many times this user has received help
@@ -173,7 +178,7 @@ class RegistrationController extends BaseController
             // echo '$helpReceived_count'.$helpReceived_count;
                 // If the user is not eligible for help, redirect the payment to the admin
         if($helpReceived_count == 1){
-            $this->level_upgrade_to_silver_users($userId);
+           $this->level_upgrade_to_silver_users($receiverUserId);
         }
 
         if ($helpReceived_count < 3) {  //0 <= 3
@@ -191,8 +196,8 @@ class RegistrationController extends BaseController
             $HelpStar->save();
             // If the user has received the maximum number of helps, update their package
             if ($helpReceived_count+1  == 3) {
-                    $receiver->package_id = 3;
-                    $receiver->star_complete = 1;
+                    $receiver->package_id = '3';
+                    $receiver->star_complete = '1';
                 $receiver->save();
         }
         // Update the user's received payment count
@@ -203,7 +208,7 @@ class RegistrationController extends BaseController
         }else{
             $adminId = 'PHC123456';
             $HelpStarAdmin = new HelpStar();
-            $HelpStarAdmin->sender_id = $user_id_sender;
+            $HelpStarAdmin->sender_id = $userId;
             $HelpStarAdmin->receiver_id = 'PHC123456'; // Payment goes to admin
             $HelpStarAdmin->amount = 300; // Use the help amount from the package
             $HelpStarAdmin->sender_position =1;
@@ -216,8 +221,8 @@ class RegistrationController extends BaseController
         }
         Redis::set('last_user_id', $receiverUserId);
         $success = [
-            'user_id' =>$user_id,
-            'current_transaction' =>$receiverUserId,
+            'user_id' =>$userId,
+            'next_transaction' =>$receiverUserId,
             'new_transaction' =>$lastUserId
         ];
         return $success;
@@ -252,7 +257,7 @@ class RegistrationController extends BaseController
         $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',3)->count();
 
         if($helpReceived_count == 4){
-            $this->level_upgrade_to_gold_users($sender_id);
+            $this->level_upgrade_to_gold_users($receiverUserId);
             Helper::sponser_help($sender_id,'600'); // send sponser help
         } 
         if($helpReceived_count  == [6,7]){
@@ -262,8 +267,8 @@ class RegistrationController extends BaseController
             $this->re_entry_payment_to_admin($userId); // send payment to admin
         }
         if ($helpReceived_count < 9) {  //0 <= 3
-            // Create a new HelpStar entry
-            $data = new HelpStar();
+            // Create a new HelpSilver entry
+            $data = new HelpSilver();
             $data->sender_id = $userId;
             $data->receiver_id = $receiverUserId;
             $data->amount = $receiverPackage->help; // Use the help amount from the package ----600
@@ -286,7 +291,7 @@ class RegistrationController extends BaseController
             // Update the last processed user ID for the next call
         }else{
             $adminId = 'PHC123456';
-            $data = new HelpStar();
+            $data = new HelpSilver();
             $data->sender_id = $userId;
             $data->receiver_id = 'PHC123456'; // Payment goes to admin
             $data->amount = 600; // Use the help amount from the package
@@ -342,7 +347,7 @@ class RegistrationController extends BaseController
             $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',4)->count();
 
         if($helpReceived_count == 4){
-            $this->level_upgrade_to_platinum_users($userId);
+            $this->level_upgrade_to_platinum_users($receiverUserId);
             Helper::sponser_help($userId,'2000');
         }
    
@@ -359,8 +364,9 @@ class RegistrationController extends BaseController
             
         }
         if ($helpReceived_count < 10) {  //0 <= 3
-            // Create a new HelpStar entry
-            $data = new HelpStar();
+            // Create a new HelpGold entry
+
+            $data = new HelpGold();
             $data->sender_id = $userId;
             $data->receiver_id = $receiverUserId;
             $data->amount = $receiverPackage->help; // Use the help amount from the package -- 2000
@@ -383,7 +389,7 @@ class RegistrationController extends BaseController
             // Update the last processed user ID for the next call
         }else{
             $adminId = 'PHC123456';
-            $data = new HelpStar();
+            $data = new HelpGold();
             $data->sender_id = $userId;
             $data->receiver_id = 'PHC123456'; // Payment goes to admin
             $data->amount = 600; // Use the help amount from the package
@@ -437,7 +443,7 @@ class RegistrationController extends BaseController
             $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',5)->count();
 
         if($helpReceived_count == 4){
-            $this->level_upgrade_to_ruby_users($userId);
+            $this->level_upgrade_to_ruby_users($receiverUserId);
             Helper::sponser_help($userId,'6000');
         }
         if ($helpReceived_count  == [6,7]) {
@@ -453,8 +459,9 @@ class RegistrationController extends BaseController
             
         }
         if ($helpReceived_count < 20) {  //0 <= 3
-            // Create a new HelpStar entry
-            $data = new HelpStar();
+            // Create a new HelpPlatinum entry
+
+            $data = new HelpPlatinum();
             $data->sender_id = $userId;
             $data->receiver_id = $receiverUserId;
             $data->amount = $receiverPackage->help; // Use the help amount from the package --6000
@@ -477,7 +484,7 @@ class RegistrationController extends BaseController
             // Update the last processed user ID for the next call
         }else{
             $adminId = 'PHC123456';
-            $data = new HelpStar();
+            $data = new HelpPlatinum();
             $data->sender_id = $userId;
             $data->receiver_id = 'PHC123456'; // Payment goes to admin
             $data->amount = 600; // Use the help amount from the package
@@ -534,7 +541,7 @@ public function level_upgrade_to_ruby_users($sender_id) {
         $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',6)->count();
 
     if($helpReceived_count == 6){ // after receiving 7 help
-        $this->level_upgrade_to_emerald_users($userId);
+        $this->level_upgrade_to_emerald_users($receiverUserId);
         Helper::sponser_help($userId,'20000');
     }
     if ($helpReceived_count  == [7,8,9,10,11]) {
@@ -550,8 +557,9 @@ public function level_upgrade_to_ruby_users($sender_id) {
         
     }
     if ($helpReceived_count < 30) {  //0 <= 3
-        // Create a new HelpStar entry
-        $data = new HelpStar();
+        // Create a new HelpRuby entry
+
+        $data = new HelpRuby();
         $data->sender_id = $userId;
         $data->receiver_id = $receiverUserId;
         $data->amount = $receiverPackage->help; // Use the help amount from the package  -- 20000
@@ -574,7 +582,7 @@ public function level_upgrade_to_ruby_users($sender_id) {
         // Update the last processed user ID for the next call
     }else{
         $adminId = 'PHC123456';
-        $data = new HelpStar();
+        $data = new HelpRuby();
         $data->sender_id = $userId;
         $data->receiver_id = 'PHC123456'; // Payment goes to admin
         $data->amount = 600; // Use the help amount from the package
@@ -628,7 +636,7 @@ public function level_upgrade_to_emerald_users($sender_id) {
         $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',7)->count();
 
     if($helpReceived_count == 6){
-        $this->level_upgrade_to_diamond_users($userId);
+        $this->level_upgrade_to_diamond_users($receiverUserId);
         Helper::sponser_help($userId,'100000');
     }
     if ($helpReceived_count  == [7,8,9,10,11,12,13,14,15]) {
@@ -644,8 +652,9 @@ public function level_upgrade_to_emerald_users($sender_id) {
         
     }
     if ($helpReceived_count < 40) {  //0 <= 3
-        // Create a new HelpStar entry
-        $data = new HelpStar();
+        // Create a new HelpEmrald entry
+
+        $data = new HelpEmrald();
         $data->sender_id = $userId;
         $data->receiver_id = $receiverUserId;
         $data->amount = $receiverPackage->help; // Use the help amount from the package -- 100000
@@ -668,7 +677,7 @@ public function level_upgrade_to_emerald_users($sender_id) {
         // Update the last processed user ID for the next call
     }else{
         $adminId = 'PHC123456';
-        $data = new HelpStar();
+        $data = new HelpEmrald();
         $data->sender_id = $userId;
         $data->receiver_id = 'PHC123456'; // Payment goes to admin
         $data->amount = 600; // Use the help amount from the package
@@ -723,8 +732,8 @@ public function level_upgrade_to_emerald_users($sender_id) {
             Helper::sponser_help($userId,'1000000');
         }
         if ($helpReceived_count < 50) {  //0 <= 3
-            // Create a new HelpStar entry
-            $data = new HelpStar();
+            // Create a new HelpDiamond entry
+            $data = new HelpDiamond();
             $data->sender_id = $userId;
             $data->receiver_id = $receiverUserId;
             $data->amount = $receiverPackage->help; // Use the help amount from the package
@@ -747,7 +756,7 @@ public function level_upgrade_to_emerald_users($sender_id) {
             // Update the last processed user ID for the next call
         }else{
             $adminId = 'PHC123456';
-            $data = new HelpStar();
+            $data = new HelpDiamond();
             $data->sender_id = $userId;
             $data->receiver_id = 'PHC123456'; // Payment goes to admin
             $data->amount = 600; // Use the help amount from the package
@@ -785,5 +794,11 @@ public function level_upgrade_to_emerald_users($sender_id) {
         $admin_payment->confirm_date = null;
         $admin_payment->status = 'Pending';
         $admin_payment->save();   
+    }
+
+    public function sponser_help(Request $request){
+        $id = $request->id;
+      $data =  Helper::sponser_help($id,100);
+      return $data;
     }
 }

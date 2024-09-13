@@ -1,5 +1,6 @@
 <?php
-namespace App\Http\Controllers\Front;
+namespace App\Http\Controllers\Api;
+
 use App\Http\Controllers\Controller;
 use App\Models\LanguageMenuText;
 use App\Models\LanguageWebsiteText;

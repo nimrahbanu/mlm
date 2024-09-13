@@ -29,7 +29,7 @@ use Validator;
 use Illuminate\Support\Facades\Mail;
 use App\Services\TransactionService;
 use Illuminate\Support\Facades\Redis;
-class RegistrationController extends BaseController
+class UserActiveController extends BaseController
 {
     protected $transactionService;
     // public function __construct(TransactionService $transactionService)

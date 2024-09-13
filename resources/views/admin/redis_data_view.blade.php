@@ -25,14 +25,17 @@
                 </thead>
                 <tbody>
                     @foreach($success['arraydata'] as $user_id)
-                    {{ $user_id }}
                     <tr>
                         <td>
                             @if($success['lastUserId'] == $user_id)
-                            <b class="bg-warning p-2" title="current transaction">{{ $user_id }}</b>
+                            <b class="bg-warning p-2" title="star transaction">{{ $user_id }}</b>
                             @else
                             {{ $user_id }}
                             @endif
+                            @if($success['third_level_last_user_id'] == $user_id)
+                            <span class="p-3 bg-info bg-opacity-10 border border-info border-start-0 rounded-end" title="silver transaction">{{ $success['third_level_last_user_id'] }}</span>  
+                            @endif
+                            
                         </td>
                         <td>{{ $success['helpReceivedCounts'][$user_id] }}</td>
                         <td>{{ $success['silver'][$user_id] }}</td>
@@ -47,12 +50,12 @@
             </table>
         </div>
     
-            @foreach($success['third_level_users'] as $third_level_users)
+            <!-- @foreach($success['third_level_users'] as $third_level_users)
             
                 <p >  {{$third_level_users}}  </p>
             @endforeach
-            
+             -->
     </div>
-
+    <hr>
 </div>
 @endsection

@@ -1,11 +1,13 @@
 <?php
-namespace App\Helpers;
-
+use App\Models\User;
+use App\Models\SevenLevelTransaction;
+use App\Models\Package;
+use App\Models\HelpStar;
 class Helper
 
 {
 
-    private function generateUniqueUserId() {
+    public function generateUniqueUserId() {
         do {
             $userId = 'PHC' . mt_rand(100000, 999999); // Generate a random 6-digit number
         } while (User::where('user_id', $userId)->exists()); // Check if the user_id already exists
@@ -19,7 +21,7 @@ class Helper
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 2)
-        ->where('star_complete', 0)
+        ->where('star_complete', '0')
         ->orderBy('activated_date')
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
@@ -35,7 +37,7 @@ class Helper
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 3)
-        ->where('silver_complete', 0)
+        ->where('silver_complete', '0')
         ->orderBy('activated_date')
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
@@ -219,7 +221,7 @@ class Helper
     }
 
     public static function seven_level_sponser_transaction($user_id){
-
+        $user = User::where('user_id',$user_id)->select('user_id','sponsor_id','id')->with('sponsor')->first();
         $user_id_sender = $user_id;
         /**
          *Implement the 7-level transaction logic start
@@ -280,7 +282,10 @@ class Helper
 
     public function sponser_help($user_id,$amount){
         $user = User::where('user_id',$user_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
-        $sponsor_package_id = User::where('user_id',$user->sponsor_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
+       print_r($user);
+        $sponsor_id = isset($user->sponsor_id) ? $user->sponsor_id : 'PHC123456';
+        $package_id = isset($user->package_id) ? $user->package_id : '1';
+        $sponsor_package_id = User::where('user_id',$sponsor_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
         if(!empty($sponsor_package_id && isset($sponsor_package_id))){
            $sponser_id =  $sponsor_package_id->package_id;
         }else{
@@ -288,9 +293,9 @@ class Helper
         }
         $sponser_help = new HelpStar();
         $sponser_help->sender_id = $user_id;
-        $sponser_help->receiver_id =  $user->sponsor_id; // Payment goes to admin
+        $sponser_help->receiver_id =  $sponsor_id; // Payment goes to admin
         $sponser_help->amount = $amount; // Use the help amount from the package
-        $sponser_help->sender_position =$user->package_id;
+        $sponser_help->sender_position =$package_id;
         $sponser_help->receiver_position =$sponser_id;
         $sponser_help->received_payments_count = 1;
         $sponser_help->commitment_date = now();

@@ -47,11 +47,11 @@
                         <th>Member</th>
                         <th>DOJ</th>
                         <th>DOA</th>
+                        <th>DO Green</th>
                         <th>Sponsor</th>
                         <th>Direct</th>
-                        <th>Block Reason</th>
-                        <th>Login</th>
-                        <th>Member Detail</th>	
+                        <!-- <th>Block Reason</th>
+                        <th>Login</th> -->
                     </tr>
                 </thead>
                 <tbody>
@@ -74,21 +74,43 @@
                                 <option value="InActive" {{ $row->status == 'InActive' ? 'selected' : '' }}>Inactive</option>
                                 <option value="Block" {{ $row->status == 'Block' ? 'selected' : '' }}>Block</option>
                             </select>
+                          
+                         
 
                         </td>
-                         <td> <b>{{ $row->user_id }}</b> <br>{{ $row->name }}
-                         <b>{{ $row->package->package_name }} </b>
+                         <td> <b>{{ $row->user_id }}</b> <br>{{ ucwords($row->name) }}<br>
+                         <b>{{ $row->package->package_name }} </b> <br>
+                         {{ $row->phone }} <br>{{ $row->email }}
                         </td>
                       
                         <td>{{date('d M,y', strtotime($row->created_at))  }}</td>
-                        <td>{{ $row->activated_date ? date('d M,y', strtotime($row->activated_date)) : null  }}</td>
-                        <td> <b>{{ $row->sponsor_id }}</b> <br> {{ $row->sponsor->name ?? 'anonymous' }}</td>
+                        <td>{{ $row->activated_date ? date('d M,y', strtotime($row->activated_date)) : null  }}
+                        <br>
+                         {{ $row->is_active == '1' ? 'Active' : 'InActive' }}
+                         <select onchange="ActiveDateStatus({{ $row->id }}, this.value)" class ="p-1 {{ $row->is_active == '1' ? 'bg-success' : '' }}">
+                                <option  value="1" {{ $row->is_active == '1' ? 'selected' : '' }}>Active</option>
+                                <option value="0" {{ $row->is_active == '0' ? 'selected' : '' }}>Inactive</option>
+                            </select>
+                <input name="memberID" type="text" id="ActiveDateStatus" class="form-control" placeholder="Member ID" value="{{ request('memberID') }}">
+
+                        </td>
+                        <td>{{ $row->green_date ? date('d M,y', strtotime($row->green_date)) : null  }}
+                            <br>
+                         {{ $row->is_green == '1' ? 'Active' : 'InActive' }}
+                         <select onchange="JoiningDateStatus({{ $row->id }}, this.value)" class ="p-1 {{ $row->is_green == '1' ? 'bg-success' : '' }}">
+                         <option  value="1" {{ $row->is_green == '1' ? 'selected' : '' }}>Active</option>
+                                <option value="0" {{ $row->is_green == '0' ? 'selected' : '' }}>Inactive</option>
+                            </select>
+                            <input name="green_date" type="date" id="JoiningDateStatus" class="form-control"  value="{{ $row->green_date ? date('d M,y', strtotime($row->green_date)) : null  }}">
+
+                        </td>
+                        <td> <b>{{ $row->sponsor_id }}</b> <br> {{ ucwords($row->sponsor->name ?? 'anonymous') }}</td>
                         <td> 
                             @php $direct = App\Models\User::where('sponsor_id', $row->user_id)->count();
                             echo $direct; @endphp</td>
-                        <td> {{ $row->block_reason }}</td>
-                        <td><button class="btn btn-warning">Login</button></td>
-                        <td>{{ $row->phone }} <br>{{ $row->email }}</td>
+                        <!-- <td> {{ $row->block_reason }}</td>
+                        <td><button class="btn btn-warning">Login</button></td> -->
+                        
                     </tr>
                     @endforeach
                 </tbody>
@@ -115,6 +137,32 @@ function customerStatus(id, status) {
         type: "get",
         url: "{{url('/admin/customer-status/')}}" + "/" + id,
         data: { status: status },  // Pass the selected status to the server
+        success: function(response) {
+            toastr.success(response);
+        },
+        error: function(err) {
+            console.log(err);
+        }
+    });
+}
+function ActiveDateStatus(id, status) {
+    $.ajax({
+        type: "get",
+        url: "{{url('/admin/customer-active-date-status/')}}" + "/" + id,
+        data: { is_active: status },  // Pass the selected status to the server
+        success: function(response) {
+            toastr.success(response);
+        },
+        error: function(err) {
+            console.log(err);
+        }
+    });
+}
+function JoiningDateStatus(id, status) {
+    $.ajax({
+        type: "get",
+        url: "{{url('/admin/customer-joining-date-status/')}}" + "/" + id,
+        data: { is_green: status },  // Pass the selected status to the server
         success: function(response) {
             toastr.success(response);
         },

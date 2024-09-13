@@ -12,12 +12,13 @@ class BaseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function sendResponse($result, $message)
+    public function sendResponse($result, $message,$filter=array())
     {
         $response = [
             'success' => true,
             'message' => $message,
             'data'    => $result,
+            'filter'    =>[$filter],
         ];
 
 
@@ -30,7 +31,7 @@ class BaseController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function sendError($error, $errorMessages = [], $code = 400)
+    public function sendError($error, $errorMessages = [], $code = 200)
     {
         $response = [
             'success' => false,
@@ -45,6 +46,21 @@ class BaseController extends Controller
 
         return response()->json($response, $code);
     }
+    // public function sendError($error, $errorMessages = [], $code = 400)
+    // {
+    //     $response = [
+    //         'success' => false,
+    //         'message' => $error,
+    //     ];
+    //
+    //
+    //     if (!empty($errorMessages)) {
+    //         $response['data'] = $errorMessages;
+    //     }
+    //
+    //
+    //     return response()->json($response, $code);
+    // }
     public function sendSuccessError($error, $errorMessages = [], $code = 200)
     {
         $response = [
@@ -60,4 +76,4 @@ class BaseController extends Controller
 
         return response()->json($response, $code);
     }
-} 
+}
