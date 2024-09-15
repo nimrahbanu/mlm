@@ -98,5 +98,18 @@ class User extends Authenticatable
         return $this->belongsTo(Bank::class, 'user_id','user_id');
 
     }
+    public function directReferrals()
+    {
+        return $this->hasMany(User::class, 'sponsor_id', 'user_id')->select('user_id','name','phone','created_at','activated_date','sponsor_id','status');
+    }
 
+    // Recursive relationship to get all referrals (direct and indirect)
+    public function allReferralsFlat()
+    {
+        $referrals = $this->directReferrals;
+        foreach ($this->directReferrals as $referral) {
+            $referrals = $referrals->merge($referral->allReferralsFlat());
+        }
+        return $referrals;
+    }
 }

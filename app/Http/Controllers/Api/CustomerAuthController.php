@@ -29,6 +29,9 @@ use Validator;
 use Illuminate\Support\Facades\Mail;
 use App\Services\TransactionService;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\RateLimiter;
+use App\Mail\AppPasswordResendMail;
+
 class CustomerAuthController extends BaseController
 {
     protected $transactionService;
@@ -59,36 +62,152 @@ class CustomerAuthController extends BaseController
     	return view('front.user.customer_login');
     }
 
+    // public function login_store(Request $request) {
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required',
+    //         'password' => 'required',
+    //     ],[
+    //         'password.required' => ERR_PASSWORD_REQUIRED
+    //     ]);
+    //     if($validator->fails()){
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    //     if (Auth::attempt(['user_id' => $request->user_id, 'password' => $request->password])) {
+    //         $user = Auth::user();
+    //         $success['token'] = $user->createToken('MyApp')->accessToken;
+    //         $success['id'] = $user->id;
+    //         $success['name'] = $user->name;
+    //         return $this->sendResponse($success, 'User login successfully.');
+    //     } else {
+    //         return $this->sendError('Customer not found');
+
+    //     }
+    // }
+    // public function login_store(Request $request) {
+    //     // Sanitize input to avoid any unwanted input manipulation
+    //     $validator = Validator::make($request->only(['user_id', 'password']), [
+    //         'user_id' => 'required|string|max:15',
+    //         'password' => 'required|string|min:8',
+    //     ],[
+    //         'password.required' => ERR_PASSWORD_REQUIRED
+    //     ]);
+    
+    //     // Return validation errors if validation fails
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    
+    //     // Throttle login attempts to prevent brute force
+    //     if (RateLimiter::tooManyAttempts('login_attempt:' . $request->ip(), 3)) {
+    //         return $this->sendError('Too many login attempts. Please try again later.');
+    //     }
+    
+    //     // Check for valid credentials and lock for too many attempts
+    //     if (Auth::attempt(['user_id' => $request->user_id, 'password' => $request->password])) {
+    //         RateLimiter::clear('login_attempt:' . $request->ip()); // Clear throttling on success
+    //         $user = Auth::user();
+    
+    //         // Ensure the account is active
+    //         if ($user->status != 'Active') {
+    //             return $this->sendError('User account is inactive.');
+    //         }
+    
+    //         // Create access token for the user
+    //         $success['token'] = $user->createToken('MyApp')->accessToken;
+    //         $success['id'] = $user->id;
+    //         $success['name'] = $user->name;
+    //         return $this->sendResponse($success, 'User logged in successfully.');
+    
+    //     } else {
+    //         // Increment login attempt count
+    //         RateLimiter::hit('login_attempt:' . $request->ip());
+    
+    //         return $this->sendError('Invalid credentials.');
+    //     }
+    // }
+    
     public function login_store(Request $request) {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ],[
-            'email.required' => ERR_EMAIL_REQUIRED,
-            'email.email' => ERR_EMAIL_INVALID,
+        // Validation logic
+        $validator = Validator::make($request->only(['user_id', 'password']), [
+            'user_id' => 'required|string|max:15',
+            'password' => 'required|string',
+        ], [
             'password.required' => ERR_PASSWORD_REQUIRED
         ]);
-        if($validator->fails()){
-            return $this->sendError('Validation Error.', $validator->errors());
-        }
-        if (Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
-            $user = Auth::user();
-            $success['token'] = $user->createToken('MyApp')->accessToken;
-            $success['id'] = $user->id;
-            $success['name'] = $user->name;
-            return $this->sendResponse($success, 'User login successfully.');
-        } else {
-            return $this->sendError('Customer not found');
-
-        }
-    }
-   
     
-    public function logout() {
-        Auth::guard('web')->logout();
-        return $this->sendResponse(true, 'Logout successfully.');
-
+        // Return validation errors if validation fails
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+    
+        // Define the rate limit key, based on the IP address or user ID
+        $rateLimitKey = 'login_attempt:' . $request->ip();
+    
+        // Check if the user has exceeded the login attempt limit (5 attempts in 1 minute)
+        if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
+            $seconds = RateLimiter::availableIn($rateLimitKey);
+            return $this->sendError('Too many login attempts. Please try again in ' . ceil($seconds / 60) . ' minutes.');
+        }
+    
+    // Attempt login in a single DB query, fetching user in the same step
+        $credentials = $request->only('user_id', 'password');
+        if (Auth::attempt($credentials)) {
+            // Clear the rate limit on successful login
+            RateLimiter::clear($rateLimitKey);
+            
+            // Retrieve the authenticated user without additional DB query
+            $user = Auth::user();
+    
+            // Check if the user account is active
+            if ($user->status !== 'Active') {
+                return $this->sendError('User account is inactive.');
+            }
+    
+            // Generate an access token
+            $success = [
+                'token' => $user->createToken('MyApp')->accessToken,
+                'id' => $user->id,
+                'name' => $user->name,
+                'user_id' => $user->user_id,
+            ];
+    
+            return $this->sendResponse($success, 'User logged in successfully.');
+        } else {
+            // Increment rate limit attempt count on failed login
+            RateLimiter::hit($rateLimitKey, 60); // 60 seconds lockout for each failed attempt
+    
+            return $this->sendError('Invalid credentials.');
+        }
     }
+    
+    // public function logout() {
+    //     Auth::guard('web')->logout();
+    //     return $this->sendResponse(true, 'Logout successfully.');
+    // }
+
+    public function logout(Request $request) {
+        // Check if the user is authenticated before attempting to log out
+        if (Auth::check()) {
+            // Log the user out using the default guard ('web' in this case)
+            Auth::logout();
+    
+            // Invalidate the session to prevent reuse
+            $request->session()->invalidate();
+    
+            // Regenerate the session token to prevent session fixation
+            $request->session()->regenerateToken();
+    
+            // Optionally, destroy the session to remove all session data
+            $request->session()->flush();
+    
+            // Return a successful logout response
+            return $this->sendResponse(true, 'Logout successful.');
+        } else {
+            // If the user is not authenticated, return an error response
+            return $this->sendError('Logout failed.', ['error' => 'User is not authenticated.']);
+        }
+    }
+    
 
     public function registration_store(Request $request) {
 
@@ -604,36 +723,142 @@ class CustomerAuthController extends BaseController
         if (!$userData) {
             return $this->sendError('User not found.');
         }
+        $seven_level_transaction = $this->seven_level_transaction($user_id);
         $success = [
             'user' => $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id']),
             'package_name' => $user->package ? $user->package->package_name : null,
             'direct_team' => User::where('sponsor_id', $user_id)->count(),
             'total_team' => $user->getTotalDescendantCount(),
             'referral_link' => url('api/customer/registration/' . $user_id),
-            'giving_help' => $active ?? $this->giving_help(),
-            'taking_help' => 0,
+            'giving_help' => $active ?? $this->giving_help($user_id),
+            'seven_level_transaction' => $seven_level_transaction,
+            'taking_help' => $this->taking_help_n($user_id),
             'taking_sponcer' => 0,
             'e_pin' => EPinTransfer::where('member_id', $user_id)->where('is_used', '0')->count(),
-            'news' => Faq::where('status', 'Active')->orderBy('faq_order')->get()
+            'news' => Faq::where('status', 'Active')->select('faq_title','faq_content','faq_order')->orderBy('faq_order')->get()
         ];
         if($user){
             return $this->sendResponse($success, 'User Data Retrieve Successfully.');
         }
     }
-
-    private function giving_help() {
-  
-     $admin =  User::with('bankDetails')->first(); // Check if the user_id already exists
+    private function giving_help($user_id) {
+        // Fetch the HelpStar data based on the given user_id
+        $admin = HelpStar::where('sender_id', $user_id)
+                    ->select('sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
+                    ->first();
     
-        return $admin;
+        // Ensure that the $admin object is not null before fetching sender and receiver details
+        if ($admin) {
+            // Fetch sender details
+            $sender = User::where('user_id', $admin->sender_id)
+                        ->select('name', 'phone', 'phone_pay_no')
+                        ->first();
+    
+            // Fetch receiver details
+            $receiver = User::where('user_id', $admin->receiver_id)
+                        ->select('name', 'phone', 'phone_pay_no')
+                        ->first();
+    
+            // Merge sender and receiver details into the $admin object
+            $admin->sender_name = $sender->name ?? null;
+            $admin->sender_phone = $sender->phone ?? null;
+            $admin->sender_phone_pay_no = $sender->phone_pay_no ?? null;
+    
+            $admin->receiver_name = $receiver->name ?? null;
+            $admin->receiver_phone = $receiver->phone ?? null;
+            $admin->receiver_phone_pay_no = $receiver->phone_pay_no ?? null;
+    
+            // Return all data as a single associative array
+            return $admin->toArray();
+        }
+    
+        return null; // Return null if no data is found
     }
+
+    private function taking_help_n($user_id) {
+        // Fetch the HelpStar data based on the given user_id
+        $admin = HelpStar::where('receiver_id', $user_id)
+                    ->select('sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
+                    ->get();
+    
+        // Ensure that the $admin collection is not empty before proceeding
+        if ($admin->isNotEmpty()) {
+            // Map over the $admin collection to append sender and receiver details
+            $admin->map(function ($item) {
+                // Fetch sender details
+                $sender = User::where('user_id', $item->sender_id)
+                            ->select('name', 'phone', 'phone_pay_no')
+                            ->first();
+        
+                // Fetch receiver details
+                $receiver = User::where('user_id', $item->receiver_id)
+                            ->select('name', 'phone', 'phone_pay_no')
+                            ->first();
+        
+                // Append sender details to the current HelpStar item
+                $item->sender_name = $sender->name ?? null;
+                $item->sender_phone = $sender->phone ?? null;
+                $item->sender_phone_pay_no = $sender->phone_pay_no ?? null;
+        
+                // Append receiver details to the current HelpStar item
+                $item->receiver_name = $receiver->name ?? null;
+                $item->receiver_phone = $receiver->phone ?? null;
+                $item->receiver_phone_pay_no = $receiver->phone_pay_no ?? null;
+            });
+    
+            // Return all data as an array
+            return $admin->toArray();
+        }
+    
+        return null; // Return null if no data is found
+    }
+    
+    
+    
+        
+    private function seven_level_transaction($user_id) {
+        // Fetch the seven-level transaction for the given user
+        $seven_level_transaction = SevenLevelTransaction::where('sender_id', $user_id)
+            ->select('first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level')
+            ->first();
+    
+        // Check if a transaction was found
+        if (!$seven_level_transaction) {
+            return null; // Return null or handle the error as needed
+        }
+    
+        // Define the levels to iterate through
+        $levels = ['first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level'];
+    
+        foreach ($levels as $level) {
+            if ($seven_level_transaction->$level) {
+                // Fetch the user details for each level if the level has a value
+                $seven_level_transaction->$level = User::where('user_id', $seven_level_transaction->$level)
+                    ->select('name', 'phone', 'phone_pay_no', 'user_id')
+                    ->first();
+            }
+        }
+    
+        return $seven_level_transaction;
+    }
+    
+    
+ 
+	
+	
+	
+	
+	
+	
+
 
     public function my_profile(Request $request){
         $validator = Validator::make($request->all(),[
             'user_id' => 'required|exists:users,user_id',
         ]);
         if($validator->fails()){
-            return $this->sendError('Validation Error.',$validator->errors());
+            return $this->sendError($validator->errors()->first());
+
         }
        
         $user_id = $request->user_id;
@@ -657,14 +882,26 @@ class CustomerAuthController extends BaseController
     public function profile_update(Request $request){
         $validator = Validator::make($request->all(),[
             'user_id' => 'required|exists:users,user_id',
+            'address' => 'required',
+            'bank_name' => 'required',
+            'account_number' => 'required',
+            'ifsc_code' => 'required',
+            'branch' => 'required',
+            'account_holder_name' => 'required',
+            // 'upi' => 'required',
+            // 'paytm' => 'required',
+            // 'phone_pe' => 'required',
+            // 'google_pay' => 'required',
+            // 'trx_rc20' => 'required',
+            // 'usdt_bep20' => 'required',
         ]);
         if($validator->fails()){
-            return $this->sendError('Validation Error.',$validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
        
         $user_id = $request->user_id;
         $fields = [
-            'user_id', 'district', 'state', 'address', 'pin_code', 'bank_name', 'account_number', 'ifsc_code', 'branch', 'account_holder_name', 'upi', 'paytm', 'phone_pe', 'google_pay', 'trx_rc20', 'usdt_bep20'
+            'user_id', 'address', 'bank_name', 'account_number', 'ifsc_code', 'branch', 'account_holder_name', 'upi', 'paytm', 'phone_pe', 'google_pay', 'trx_rc20', 'usdt_bep20'
         ];
       $success['bank'] =   Bank::updateOrCreate(['user_id' => $user_id], $request->only($fields));
 
@@ -676,41 +913,83 @@ class CustomerAuthController extends BaseController
         }
     } 
 
-    public function update_password(Request $request){
-            $validator = Validator::make($request->all(), [
-                'user_id'    => 'required',
-                'old_password' => 'required',
-                'password'     => 'required',
-                'password_confirmation' => 'required',
-            ]);
-            if ($validator->fails()) {
-                return $this->sendError('Validation Error.', $validator->errors());
-            }
-            try{
+    // public function update_password(Request $request){
+    //         $validator = Validator::make($request->all(), [
+    //             'user_id'    => 'required',
+    //             'old_password' => 'required',
+    //             'password'     => 'required',
+    //             'password_confirmation' => 'required',
+    //         ]);
+    //         if ($validator->fails()) {
+    //             return $this->sendError('Validation Error.', $validator->errors());
+    //         }
+    //         try{
     
-                $old_password= $request->old_password;
-                $password= $request->password;
-                $password_confirmation= $request->password_confirmation;
-                $obj = User::where('user_id', $request->user_id)->first();
-                if (!Hash::check($request->old_password, $obj->password)) {
-                    return $this->sendSuccessError('Oops! The old password does not match our records.',$old_password);
-                }
-                if ($password_confirmation === $password) {
-                    $obj->password = Hash::make($request->password);
+    //             $old_password= $request->old_password;
+    //             $password= $request->password;
+    //             $password_confirmation= $request->password_confirmation;
+    //             $obj = User::where('user_id', $request->user_id)->first();
+    //             if (!Hash::check($request->old_password, $obj->password)) {
+    //                 return $this->sendSuccessError('Oops! The old password does not match our records.',$old_password);
+    //             }
+    //             if ($password_confirmation === $password) {
+    //                 $obj->password = Hash::make($request->password);
             
-                    if ($obj->save()) {
-                        return $this->sendResponse($obj, 'Password updated successfully.');
-                    } else {
-                        return $this->sendError('Oops! Unable to  update password. Please try again.');
-                    }
-                }else{
-                    return $this->sendSuccessError('The password confirmation does not match','The password confirmation does not match');
+    //                 if ($obj->save()) {
+    //                     return $this->sendResponse($obj, 'Password updated successfully.');
+    //                 } else {
+    //                     return $this->sendError('Oops! Unable to  update password. Please try again.');
+    //                 }
+    //             }else{
+    //                 return $this->sendSuccessError('The password confirmation does not match','The password confirmation does not match');
     
-                }
-            }catch (\Exception $e) {
-                return $this->sendError('Oops! Something went wrong. Please try again.');
+    //             }
+    //         }catch (\Exception $e) {
+    //             return $this->sendError('Oops! Something went wrong. Please try again.');
+    //         }
+    // } 
+
+    function update_password(Request $request) {
+        // Validate the request with secure rules
+        $validator = Validator::make($request->all(), [
+            'user_id'              => 'required|exists:users,user_id', // Ensure user_id exists in the users table
+            'old_password'         => 'required|string',
+            'password'             => 'required|string|min:8|confirmed', // Ensure the password is at least 8 characters and matches confirmation
+            'password_confirmation'=> 'required|string|min:8'
+        ]);
+    
+        // Return validation errors if validation fails
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+
+        }
+    
+        try {
+            // Retrieve user by user_id
+            $user = User::where('user_id', $request->user_id)->first();
+    
+            // Check if the old password matches the current password
+            if (!Hash::check($request->old_password, $user->password)) {
+                return $this->sendError('The old password does not match our records.');
             }
-    } 
+    
+            // Update the password and save the user
+            $user->password = Hash::make($request->password);
+    
+            // Save the updated user data
+            if ($user->save()) {
+                return $this->sendResponse([], 'Password updated successfully.');
+            } else {
+                return $this->sendError('Unable to update the password. Please try again.');
+            }
+    
+        } catch (\Exception $e) {
+            // Log the error for debugging purposes
+            Log::error('Password update error: ', ['error' => $e->getMessage()]);
+            return $this->sendError('Something went wrong. Please try again later.');
+        }
+    }
+    
     public function active_users_id(){
         $data = User::where(['is_active'=>1,'is_green'=>1,'status'=>'Active','deleted_at'=>null])->orderBy('activated_date')->pluck('id')->toArray();
         return $data;
@@ -843,20 +1122,57 @@ class CustomerAuthController extends BaseController
     //     $data->save();
     // }
  
-    public function view_direct(Request $request){
-        $validator = Validator::make($request->all(),[
+    public function view_direct(Request $request) {
+        // Validate the request input
+        $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
+            'fromDate' => 'nullable|date', // Optional date field with date validation
+            'toDate' => 'nullable|date',   // Optional date field with date validation
+            'status' => 'nullable|string', // Optional status field
         ]);
-        if($validator->fails()){
-            return $this->sendError('Validation Error.',$validator->errors());
+    
+        // If validation fails, return the first error
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
         }
-       
-        $user_id = $request->user_id;
-        $user = User::where('user_id',$user_id)->first(); // Use with() to eager load the package relationship
-       $view_direct = User::where('sponsor_id',$request->user_id)->get();
-       return $this->sendResponse($view_direct, 'Retrieve successfully.');
+    
+        // Create a query instance for the User model
+        $user_id = $request->user_id; // Use sponsor_id to filter
+        $query = User::where('sponsor_id', $user_id); // Use sponsor_id to filter
+    
+        if ($request->fromDate) {
+            $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+            $query->where('created_at', '>=', $fromDate);
+        }
+    
+        // Filter by toDate
+        if ($request->toDate) {
+
+            $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+            $query->where('created_at', '<=', $toDate);
+        }
+    
+        // Filter by status
+        if ($request->status) {
+            $query->where('status', $request->status);
+        }
+    
+        // Execute the query and get the results
+        $view_direct = $query->select('user_id','name','phone','created_at','activated_date','sponsor_id','status')->get();
+        $view_direct->map(function ($user) {
+            $user->sponsor_name = $this->get_name($user->sponsor_id);
+            return $user;
+        });
+
+        // Return the filtered list of direct users
+        return $this->sendResponse($view_direct, 'Retrieved successfully.');
     }
     
+    public function get_name($user_id) {
+        // Get the user name based on the user ID, with a fallback to 'anonymous'
+        $user = User::where('user_id', $user_id)->value('name');
+        return $user ? $user : 'anonymous';
+    }
 
     public function get_name_by_id(Request $request){
         $validator = Validator::make($request->all(),[
@@ -879,27 +1195,162 @@ class CustomerAuthController extends BaseController
     }
 
 
-  
-    public function view_downline(Request $request){
-        $validator = Validator::make($request->all(),[
-            'user_id' => 'required|exists:users,user_id',
-        ]);
-        if($validator->fails()){
-            return $this->sendError('Validation Error.',$validator->errors());
-        }
-        $query = User::query();
-       
-        $sponsorId = $request->user_id;
-        $directMembers = User::where('sponsor_id', $sponsorId)->pluck('id');
-        $allMemberIds = $directMembers->toArray();
-        $this->getDownlineMembers($directMembers, $allMemberIds);
-        $query->whereIn('id', $allMemberIds);
+    // public function view_downline(Request $request) {
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required|exists:users,user_id',
+    //         'fromDate' => 'nullable|date',
+    //         'toDate' => 'nullable|date',
+    //         'status' => 'nullable|string',
+    //     ]);
+    
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    
+    //     $sponsorId = $request->user_id;
         
-        $customers = $query->orderby('created_at','DESC')->get();
-        
-        return $this->sendResponse($customers, 'Retrieve successfully.');
+    //     // Retrieve all downline members in one query using a breadth-first approach
+    //     $allMemberIds = $this->getDownlineMembers($sponsorId);
+    
+    //     // Create query for retrieving filtered users
+    //     $query = User::select('id','user_id','name','phone','created_at','activated_date','sponsor_id','status')->whereIn('id', $allMemberIds);
+    
+    //     // Apply date range filters
+    //     if ($request->fromDate) {
+    //         $fromDate = \Carbon\Carbon::parse($request->fromDate)->startOfDay();
+    //         $query->where('created_at', '>=', $fromDate);
+    //     }
+    
+    //     if ($request->toDate) {
+    //         $toDate = \Carbon\Carbon::parse($request->toDate)->endOfDay();
+    //         $query->where('created_at', '<=', $toDate);
+    //     }
+    
+    //     // Filter by status if provided
+    //     if ($request->status) {
+    //         $query->where('status', $request->status);
+    //     }
+    
+    //     // Get results with pagination to handle large datasets
+    //     $customers = $query->orderBy('created_at', 'DESC')->get();
+    
+    //     return $this->sendResponse($customers, 'Retrieve successfully.');
+    // }
+    public function view_downline(Request $request)
+{
+    // Validate the request input
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|exists:users,user_id',
+        'fromDate' => 'nullable|date_format:Y-m-d', // Validate date format
+        'toDate' => 'nullable|date_format:Y-m-d',   // Validate date format
+        'status' => 'nullable|string',
+    ]);
 
+    // If validation fails, return the first error
+    if ($validator->fails()) {
+        return $this->sendError($validator->errors()->first());
     }
+
+    // Find the sponsor user
+    $user = User::where('user_id', $request->user_id)->select('id','user_id','name','phone','created_at','activated_date','sponsor_id','status')->first();
+
+
+    // Fetch all direct and indirect members (recursive relationship)
+    $all_members = $user->allReferralsFlat();
+
+    // Apply additional filters, if necessary
+    $filtered_members = $all_members;
+
+    if ($request->filled('fromDate')) {
+        $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+        $filtered_members = $filtered_members->filter(function ($user) use ($fromDate) {
+            return $user->created_at >= $fromDate;
+        });
+    }
+
+    // Filter by toDate
+    if ($request->filled('toDate')) {
+        $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+        $filtered_members = $filtered_members->filter(function ($user) use ($toDate) {
+            return $user->created_at <= $toDate;
+        });
+    }
+
+    // Filter by status
+    if ($request->filled('status')) {
+        $filtered_members = $filtered_members->filter(function ($user) use ($request) {
+            return $user->status === $request->status;
+        });
+    }
+
+    // Convert the filtered result back to a collection
+    $filteredMembers = $filtered_members->values(); // Reset the keys
+
+    // Return the filtered list of all members
+    return $this->sendResponse($filteredMembers, 'Retrieved successfully.');
+}
+
+    // private function getAllDownlineMembersnew($sponsorId) {
+    //     // Initialize arrays to hold current and all downline member IDs
+    //     $allMemberIds = [$sponsorId];
+    //     $currentMembers = [$sponsorId];
+    
+    //     while (!empty($currentMembers)) {
+    //         // Retrieve the next level of downline members in one query
+    //         $nextMembers = User::whereIn('sponsor_id', $currentMembers)->pluck('id')->toArray();
+    
+    //         // If no more members, break the loop
+    //         if (empty($nextMembers)) {
+    //             break;
+    //         }
+    
+    //         // Add next level of members to the allMemberIds array
+    //         $allMemberIds = array_merge($allMemberIds, $nextMembers);
+    
+    //         // Set currentMembers to the nextMembers for the next iteration
+    //         $currentMembers = $nextMembers;
+    //     }
+    
+    //     return $allMemberIds;
+    // }
+    
+    // public function view_downline(Request $request){
+    //     $validator = Validator::make($request->all(),[
+    //         'user_id' => 'required|exists:users,user_id',
+    //     ]);
+    //     if($validator->fails()){
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    //     $query = User::query();
+    //     $sponsorId = $request->user_id;
+
+    //     if ($request->fromDate) {
+    //         $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+    //         $query->where('created_at', '>=', $fromDate);
+    //     }
+    
+    //     // Filter by toDate
+    //     if ($request->toDate) {
+    
+    //         $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+    //         $query->where('created_at', '<=', $toDate);
+    //     }
+    
+    //     // Filter by status
+    //     if ($request->status) {
+    //         $query->where('status', $request->status);
+    //     }
+    
+    //     $directMembers = User::where('sponsor_id', $sponsorId)->pluck('id');
+    //     $allMemberIds = $directMembers->toArray();
+    //     $this->getDownlineMembers($directMembers, $allMemberIds);
+    //     $query->whereIn('id', $allMemberIds);
+        
+    //     $customers = $query->orderby('created_at','DESC')->get();
+        
+    //     return $this->sendResponse($customers, 'Retrieve successfully.');
+
+    // }
  
     private function getDownlineMembers($directMembers, &$allMemberIds)
     {
@@ -934,14 +1385,18 @@ class CustomerAuthController extends BaseController
        
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
-            'subject' => 'required',
-            'department_id'     => 'required',
+            'subject'       => 'required|string|max:255',
+            'department_id' => 'required',
             'priority' => 'required',
             'user_message' => 'required',
-            'user_image' => 'nullable',
-        ]);
+            'user_image'    => 'nullable|image|mimes:jpeg,png,jpg,gif|max:5120'
+        ], [
+                'user_image.image'   => 'The file must be an image (jpeg, png, jpg, gif).',
+                'user_image.mimes'   => 'Only jpeg, png, jpg, and gif images are allowed.',
+                'user_image.max'     => 'The image size must not exceed 5MB.'
+            ]);
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
         try{
 
@@ -951,35 +1406,79 @@ class CustomerAuthController extends BaseController
                 $obj->department_id = $request->department_id;
                 $obj->priority = $request->priority;
                 $obj->user_message = $request->user_message;
-                $obj->user_image = $request->user_image;
+                if ($request->hasFile('user_image')) {
+                    // Generate a unique file name
+                    $ext = $request->file('user_image')->extension();
+                    $rand_value = md5(mt_rand(11111111, 99999999));
+                    $final_name = $rand_value . '.' . $ext;
+        
+                    // Move the uploaded file to the user photos directory
+                    $request->file('user_image')->move(public_path('uploads/support-form/'), $final_name);
+        
+                    // Save the image name in the database
+                    $obj->user_image = $final_name;
+                }
                 if ($obj->save()) {
                     return $this->sendResponse($obj, 'Form submitted successfully.');
                 } else {
                     return $this->sendError('Oops! Unable to submit form. Please try again.');
                 }
         }catch (\Exception $e) {
+        Log::error('Form submission error: ', ['error' => $e->getMessage()]);
+
             return $this->sendError('Oops! Something went wrong. Please try again.');
         }
     }
 
     public function help_history(Request $request) 
-    {
-      
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,user_id',
-        ]);
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
-        }
-        try{
-            $user_id = $request->user_id;
-            $data = HelpStar::where('sender_id', $user_id)->with('receiverByData')->get();
-            return $this->sendResponse($data, 'Data Retrieve successfully.');
-             
-        }catch (\Exception $e) {
-            return $this->sendError('Oops! Something went wrong. Please try again.');
-        }
+{
+    // Validate the request
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|exists:users,user_id',
+        'fromDate' => 'nullable|date',
+        'toDate' => 'nullable|date',
+    ]);
+
+    if ($validator->fails()) {
+        return $this->sendError($validator->errors()->first());
     }
+
+    try {
+        $user_id = $request->user_id;
+
+        // Create query for HelpStar data
+        $query = HelpStar::where('sender_id', $user_id)
+                ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'created_at');
+
+        // Filter by fromDate if provided
+        if ($request->filled('fromDate')) {
+            $fromDate = \Carbon\Carbon::parse($request->fromDate)->startOfDay();
+            $query->where('created_at', '>=', $fromDate);
+        }
+
+        // Filter by toDate if provided
+        if ($request->filled('toDate')) {
+            $toDate = \Carbon\Carbon::parse($request->toDate)->endOfDay();
+            $query->where('created_at', '<=', $toDate);
+        }
+
+        // Execute query and retrieve results
+        $data = $query->get();
+
+        // Map over the results to add sponsor and member names
+        $data->map(function ($record) use ($user_id) {
+            $record->sponsor_name = $this->get_name($record->receiver_id);
+            $record->member_name = $this->get_name($user_id);
+            return $record;
+        });
+
+        return $this->sendResponse($data, 'Data retrieved successfully.');
+
+    } catch (\Exception $e) {
+        return $this->sendError('Oops! Something went wrong. Please try again.');
+    }
+}
+
 
     public function taking_help(Request $request) 
     {
@@ -988,7 +1487,7 @@ class CustomerAuthController extends BaseController
             'user_id' => 'required|exists:users,user_id',
         ]);
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
         try{
             $user_id = $request->user_id;
@@ -1005,11 +1504,11 @@ class CustomerAuthController extends BaseController
             'user_id' => 'required|exists:users,user_id',
         ]);
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
         try{
             $user_id = $request->user_id;
-        $data = EPinTransfer::orderBy('id', 'desc')->where('member_id',$user_id)->where('is_used','0')->with('MemberData','providedByData','EpinUsed')->get();
+        $data = EPinTransfer::orderBy('id', 'desc')->where('member_id',$user_id)->with('MemberData','providedByData','EpinUsed')->get();
       
             return $this->sendResponse($data, 'Data Retrieve successfully.');
              
@@ -1017,6 +1516,8 @@ class CustomerAuthController extends BaseController
             return $this->sendError('Oops! Something went wrong. Please try again.');
         }
     }
+
+
     public function total_available_pin(Request $request){
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
@@ -1035,52 +1536,213 @@ class CustomerAuthController extends BaseController
         }
     }
 
+    // public function epin_transfer(Request $request){
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required|exists:users,user_id',
+    //         'member_id' => 'required|exists:users,user_id',
+    //         'quantity' => 'required|integer|min:1',
+    //     ]);
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    //     try{
+    //         $user_id = $request->user_id;
+    //         $member_id = $request->member_id;
+    //         $quantity = $request->quantity;
+    //         $member_name = $user = User::where('user_id',$user_id)->value('name');  
+
+    //         $epins = EPinTransfer::orderBy('id', 'asc')->take($quantity)->take($quantity)->get();
+    //         // Step 3: Fetch the exact number of EPinTransfer records to be updated
+    //         $epin_transfers = EPinTransfer::where('member_id', $user_id)
+    //                             ->where('is_used', '0')
+    //                             ->orderBy('id', 'asc') // Ensure the order is consistent
+    //                             ->take($quantity)
+    //                             ->get();
+    
+    //         // Step 4: Update the EPinTransfer records
+    //         foreach ($epin_transfers as $index => $transfer) {
+    //             if (isset($epins[$index])) {
+    //                 $epin = $epins[$index]; // Get the corresponding EPin record
+    
+    //                 // Update the EPinTransfer record with data from the EPin
+    //                 $transfer->member_id = $member_id;
+    //                 $transfer->provided_by = $user_id;
+    //                 $transfer->member_name = $member_name;
+    //                 $transfer->balance = $epin->balance;
+    //                 $transfer->quantity = 1;
+    //                 $transfer->status = $epin->status;
+    //                 $transfer->flag = $epin->flag;
+    //                 $transfer->e_pin = $epin->e_pin;
+    //                 $transfer->save(); // Save the updated EPinTransfer
+    
+    //             }
+    //         }
+      
+    //         return $this->sendResponse($transfer, 'Data Retrieve successfully.');
+             
+    //     }catch (\Exception $e) {
+    //         dd($e);
+    //         return $this->sendError('Oops! Something went wrong. Please try again.');
+    //     }
+    // }
+    
     public function epin_transfer(Request $request){
+        // Validate the input data
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
-            'member_id' => 'required',
-            'quantity' => 'required',
+            'member_id' => 'required|exists:users,user_id',
+            'quantity' => 'required|integer|min:1',
         ]);
+    
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
-        try{
+    
+        try {
             $user_id = $request->user_id;
             $member_id = $request->member_id;
             $quantity = $request->quantity;
-            $member_name = $user = User::where('user_id',$user_id)->value('name');  
-
-            $epins = EPinTransfer::orderBy('id', 'asc')->take($quantity)->take($quantity)->get();
-            // Step 3: Fetch the exact number of EPinTransfer records to be updated
+    
+            // Fetch the user name for the provided user_id
+            $member_name = User::where('user_id', $user_id)->value('name');  
+    
+            // Fetch the EPinTransfer records that need to be transferred
             $epin_transfers = EPinTransfer::where('member_id', $user_id)
                                 ->where('is_used', '0')
-                                ->orderBy('id', 'asc') // Ensure the order is consistent
+                                ->orderBy('id', 'asc') // Get the earliest unused pins
                                 ->take($quantity)
                                 ->get();
     
-            // Step 4: Update the EPinTransfer records
+            if ($epin_transfers->isEmpty()) {
+                return $this->sendError('No available pins to transfer.');
+            }
+    
+            // Fetch the actual EPin details
+            $epins = EPinTransfer::orderBy('id', 'asc')
+                                ->take($quantity)
+                                ->get();
+    
+            // Initialize variable to avoid undefined variable issue
+            $updated_transfers = [];
+    
+            // Update the EPinTransfer records with the corresponding EPin details
             foreach ($epin_transfers as $index => $transfer) {
                 if (isset($epins[$index])) {
                     $epin = $epins[$index]; // Get the corresponding EPin record
     
-                    // Update the EPinTransfer record with data from the EPin
+                    // Update the EPinTransfer record
                     $transfer->member_id = $member_id;
                     $transfer->provided_by = $user_id;
                     $transfer->member_name = $member_name;
                     $transfer->balance = $epin->balance;
-                    $transfer->quantity = 1;
+                    $transfer->quantity = 1; // Set the quantity to 1 as requested
                     $transfer->status = $epin->status;
                     $transfer->flag = $epin->flag;
                     $transfer->e_pin = $epin->e_pin;
                     $transfer->save(); // Save the updated EPinTransfer
     
+                    // Collect the updated transfer records
+                    $updated_transfers[] = $transfer;
                 }
             }
-      
-            return $this->sendResponse($transfer, 'Data Retrieve successfully.');
-             
-        }catch (\Exception $e) {
+    
+            return $this->sendResponse($updated_transfers, 'EPin transferred successfully.');
+            
+        } catch (\Exception $e) {
+            // Log the exception for debugging (optional)
+            // Log::error($e->getMessage());
+    
             return $this->sendError('Oops! Something went wrong. Please try again.');
+        }
+    }
+    
+    public function send_email_phone_otp(Request $request){
+        $validator = Validator::make($request->all(), [
+            'email_or_mobile' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+        $otpNo    = rand(100000, 999999);
+        $user_email_phone = $request['email_or_mobile'];
+        $obj = User::where(['phone' => $user_email_phone])->orWhere(['email' => $user_email_phone])->first();
+        // dd($obj->email);
+        if($obj && $obj->email){
+            $obj->otp = $otpNo;
+            try{
+                $mailBody = [
+                    'name'        => @$obj->name,
+                    'email'       => @$obj->email,
+                    'phone'      => @$obj->mobile,
+                    'otp'      => @$otpNo,
+                ];
+                    $mobileNo = $obj->mobile;
+                    $expert_id = $obj->user_id;
+                if ($obj->save()) {
+                    $success['name']  = $obj->name;
+                    $success['email'] = $obj->email;
+
+                    Mail::to($obj->email)->send(new AppPasswordResendMail($mailBody));
+                    // return $this->sendResponse($success, 'Otp resent successfully.');
+                    $success['mobile'] = $mobileNo;
+                    $success['otp'] = $otpNo;
+                    $success['expert_id'] = $expert_id;
+                    return $this->sendResponse($success, 'Otp resent successfully.');
+                } else {
+                    return $this->sendError('Oops! Unable to resend. Please try again.');
+                }
+            }catch (\Exception $e) {
+                dd($e);
+                return $this->sendError('Oops! Unable to resend. Please try again.');
+
+            }
+            }else{
+                return $this->sendError('Oops! User not found. Please try again.');
+        }
+    }
+
+    public function verify_otp(Request $request){
+        $validator = Validator::make($request->all(), [
+            'user_id'    => 'required',
+            'otp' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+
+        $obj = User::where('user_id', $request->user_id)->Where(['otp' => $request->otp])->first();
+        if ($obj) {
+
+            $success = "";
+            return $this->sendResponse($success, 'Otp Verify successfully.');
+        } else {
+            return $this->sendError('Oops! Unable to verify otp. Please try again.');
+        }
+    }
+
+    public function forgetPassword(Request $request){
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,user_id', 
+            'otp' => 'required',
+            'password' => 'required|confirmed',
+            'password_confirmation' => 'required',
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+
+        $obj = User::where('user_id', $request->user_id)->Where(['otp' => $request->otp])->first();
+        if($obj){
+        $obj->password = Hash::make($request->password);
+        }else{
+            return $this->sendError('Oops! Unable to  update password. Please try again.');
+        }
+        if ($obj->save()) {
+            $success = "";
+            return $this->sendResponse($success, 'Password updated successfully.');
+        } else {
+            return $this->sendError('Oops! Unable to  update password. Please try again.');
         }
     }
  

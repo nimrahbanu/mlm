@@ -17,6 +17,13 @@ use Illuminate\Support\Facades\Redis;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
+/** forget password start */
+Route::post('customer/forget-passowrd', [CustomerAuthController::class,'send_email_phone_otp']); //dome
+Route::post('customer/verify-otp', [CustomerAuthController::class,'verify_otp']); //dome
+Route::post('customer/verify-password', [CustomerAuthController::class,'forgetPassword']); //dome
+
+
+/** forget password end */
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

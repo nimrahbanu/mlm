@@ -36,6 +36,9 @@ use Validator;
 use Illuminate\Support\Facades\Mail;
 use App\Services\TransactionService;
 use Illuminate\Support\Facades\Redis;
+
+use App\Mail\AppRegistrationMail;
+
 class RegistrationController extends BaseController
 {
     protected $transactionService;
@@ -125,8 +128,18 @@ class RegistrationController extends BaseController
 
                         if ($user) {
                            $success = $this->star_level_transaction($user->user_id);
+                           $mailBody = [
+                            'name'        => @$data['name'],
+                            'email'       => @$data['email'],
+                            'password'      => $request->password,
+                            'sponsor_id'      => @$data['sponsor_id'],
+                            'phone_pay_no'      => @$data['phone_pay_no'],
+                        ];
+
+                    
+                        Mail::to($request->email)->send(new AppRegistrationMail($mailBody));
                             
-                            return $this->sendResponse($success, 'User registered successfully');
+                            return $this->sendResponse($data, 'User registered successfully');
                         } else {
                             return $this->sendError('Unable to register. Please try again.');
                         }
@@ -347,19 +360,19 @@ class RegistrationController extends BaseController
             $helpReceived_count = HelpStar::where('receiver_id', $receiverUserId)->where('receiver_position',4)->count();
 
         if($helpReceived_count == 4){
-            $this->level_upgrade_to_platinum_users($receiverUserId);
+            $this->level_upgrade_to_platinum_users($receiverUserId); 
             Helper::sponser_help($userId,'2000');
         }
    
         if ($helpReceived_count  == [6,7]) {
             for ($i = 0; $i < 3; $i++) {
-                $this->star_level_transaction($userId); // re birth for star level
+                $this->star_level_transaction($userId); // re birth for star level  need to hold if any person is not exist
             }
         }
       
         if($helpReceived_count  == 8){
             for ($i = 0; $i < 3; $i++) {
-                $this->re_entry_payment_to_admin($userId);  // send payment to admin
+                $this->re_entry_payment_to_admin($userId);  // send payment to admin // 
             }
             
         }
