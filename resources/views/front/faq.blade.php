@@ -2,13 +2,13 @@
 
 @section('content')
 
-    <div class="page-banner" style="background-image: url('{{ asset('uploads/page_banners/'.$faq->banner) }}')">
+    <div class="page-banner" style="background-image: url('{{ asset('uploads/page_banners/'.$news->banner) }}')">
 	    <div class="page-banner-bg"></div>
-        <h1>{{ $faq->name }}</h1>
+        <h1>{{ $news->name }}</h1>
         <nav>
             <ol class="breadcrumb justify-content-center">
                 <li class="breadcrumb-item"><a href="{{ url('/') }}">{{ HOME }}</a></li>
-                <li class="breadcrumb-item active">{{ $faq->name }}</li>
+                <li class="breadcrumb-item active">{{ $news->name }}</li>
             </ol>
         </nav>
     </div>
@@ -18,7 +18,7 @@
 
             <div class="row">
                 <div class="col-md-12">
-                    {!! clean($faq->detail) !!}
+                    {!! clean($news->detail) !!}
                 </div>
             </div>
 
@@ -35,13 +35,13 @@
                                 <div class="panel-heading" role="tab" id="heading{{ $i }}">
                                     <h4 class="panel-title">
                                         <a class="collapsed" role="button" data-toggle="collapse" data-parent="#accordion1" href="#collapse{{ $i }}" aria-expanded="false" aria-controls="collapse{{ $i }}">
-                                            {{ $row->faq_title }}
+                                            {{ $row->news_title }}
                                         </a>
                                     </h4>
                                 </div>
                                 <div id="collapse{{ $i }}" class="panel-collapse collapse" role="tabpanel" aria-labelledby="heading{{ $i }}">
                                     <div class="panel-body">
-                                        {!! clean($row->faq_content) !!}
+                                        {!! clean($row->news_content) !!}
                                     </div>
                                 </div>
                             </div>

@@ -10,7 +10,7 @@ use App\Models\Bank;
 use App\Models\Payment;
 use App\Models\Package;
 use App\Models\HelpStar;
-use App\Models\Faq;
+use App\Models\News;
 use App\Models\Support;
 use App\Models\EmailTemplate;
 use App\Models\PageOtherItem;
@@ -724,6 +724,8 @@ class CustomerAuthController extends BaseController
             return $this->sendError('User not found.');
         }
         $seven_level_transaction = $this->seven_level_transaction($user_id);
+        $taking_help_n = $this->taking_help_n($user_id); // Newly added function
+        $taking_transaction = $this->taking_transaction($user_id); // Newly added function
         $success = [
             'user' => $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id']),
             'package_name' => $user->package ? $user->package->package_name : null,
@@ -732,10 +734,11 @@ class CustomerAuthController extends BaseController
             'referral_link' => url('api/customer/registration/' . $user_id),
             'giving_help' => $active ?? $this->giving_help($user_id),
             'seven_level_transaction' => $seven_level_transaction,
-            'taking_help' => $this->taking_help_n($user_id),
+            'taking_help' => $taking_help_n,
+            'taking_transaction' => $taking_transaction, // Newly added key
             'taking_sponcer' => 0,
             'e_pin' => EPinTransfer::where('member_id', $user_id)->where('is_used', '0')->count(),
-            'news' => Faq::where('status', 'Active')->select('faq_title','faq_content','faq_order')->orderBy('faq_order')->get()
+            'news' => News::where('status', 'Active')->select('news_title','news_content','news_order')->orderBy('news_order')->get()
         ];
         if($user){
             return $this->sendResponse($success, 'User Data Retrieve Successfully.');
@@ -743,7 +746,7 @@ class CustomerAuthController extends BaseController
     }
     private function giving_help($user_id) {
         // Fetch the HelpStar data based on the given user_id
-        $admin = HelpStar::where('sender_id', $user_id)
+        $admin = HelpStar::where('sender_id', $user_id)->where('confirm_date',null)
                     ->select('sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
                     ->first();
     
@@ -760,6 +763,7 @@ class CustomerAuthController extends BaseController
                         ->first();
     
             // Merge sender and receiver details into the $admin object
+            $admin->title = 'Giving Help';
             $admin->sender_name = $sender->name ?? null;
             $admin->sender_phone = $sender->phone ?? null;
             $admin->sender_phone_pay_no = $sender->phone_pay_no ?? null;
@@ -777,7 +781,7 @@ class CustomerAuthController extends BaseController
 
     private function taking_help_n($user_id) {
         // Fetch the HelpStar data based on the given user_id
-        $admin = HelpStar::where('receiver_id', $user_id)
+        $admin = HelpStar::where('receiver_id', $user_id)->where('confirm_date',null)
                     ->select('sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
                     ->get();
     
@@ -796,6 +800,7 @@ class CustomerAuthController extends BaseController
                             ->first();
         
                 // Append sender details to the current HelpStar item
+                $item->title = 'Taking Help';
                 $item->sender_name = $sender->name ?? null;
                 $item->sender_phone = $sender->phone ?? null;
                 $item->sender_phone_pay_no = $sender->phone_pay_no ?? null;
@@ -836,6 +841,7 @@ class CustomerAuthController extends BaseController
                 $seven_level_transaction->$level = User::where('user_id', $seven_level_transaction->$level)
                     ->select('name', 'phone', 'phone_pay_no', 'user_id')
                     ->first();
+                    // $seven_level_transaction->title = $level .'income';
             }
         }
     
@@ -843,10 +849,81 @@ class CustomerAuthController extends BaseController
     }
     
     
- 
+
+    private function taking_transaction($user_id) {
+        // Define sponsor level amounts and titles for each level
+        $sponsor_level_data = [
+            ['amount' => 100, 'title' => 'First Level'],
+            ['amount' => 50, 'title' => 'Second Level'],
+            ['amount' => 40, 'title' => 'Third Level'],
+            ['amount' => 20, 'title' => 'Fourth Level'],
+            ['amount' => 20, 'title' => 'Fifth Level'],
+            ['amount' => 10, 'title' => 'Sixth Level'],
+            ['amount' => 10, 'title' => 'Seventh Level']
+        ];
+    
+        // Initialize an empty collection to store all taking transactions
+        $taking_transactions = collect();
+    
+        // Fetch transactions where the user is the receiver at any level
+        $levels = [
+            'first_level', 'second_level', 'third_level', 
+            'fourth_level', 'five_level', 'six_level', 'seven_level'
+        ];
+    
+        // Iterate through each level and retrieve corresponding transactions
+        foreach ($levels as $index => $level) {
+            $column = $level; // level column name (e.g., 'first_level', 'second_level', etc.)
+            $confirm_date_column = $level . '_confirm_date'; // confirm date column (e.g., 'first_level_confirm_date')
+    
+            $transactions = SevenLevelTransaction::with('senderDetail')
+                ->where($column, $user_id)
+                ->select('id', 'sender_id', $column, $confirm_date_column)
+                ->get()
+                ->map(function($transaction) use ($sponsor_level_data, $index) {
+                    // Add level-specific data to each transaction
+                    $transaction->level = $sponsor_level_data[$index]['title']; // Level title
+                    $transaction->amount = $sponsor_level_data[$index]['amount']; // Level amount
+                    return $transaction;
+                });
+    
+            // Merge the retrieved transactions into the collection
+            $taking_transactions = $taking_transactions->merge($transactions);
+        }
+    
+        // Return all taking transactions for the user with level and amount information
+        return $taking_transactions;
+    }
+    
+
 	
-	
-	
+// private function taking_transaction($user_id) {
+//     $sponser_level_amount =  [100, 50, 40, 20, 20, 10, 10];
+//     // Initialize an empty collection to store all taking transactions
+//     $taking_transactions = collect();
+
+//     // Fetch transactions where the user is the receiver at any level
+//     $first_level = SevenLevelTransaction::with('senderDetail')->where('first_level', $user_id)->select('id', 'sender_id', 'first_level', 'first_level_confirm_date')->get();
+//     $second_level = SevenLevelTransaction::with('senderDetail')->where('second_level', $user_id)->select('id', 'sender_id', 'second_level', 'second_level_confirm_date')->get();
+//     $third_level = SevenLevelTransaction::with('senderDetail')->where('third_level', $user_id)->select('id', 'sender_id', 'third_level', 'third_level_confirm_date')->get();
+//     $fourth_level = SevenLevelTransaction::with('senderDetail')->where('fourth_level', $user_id)->select('id', 'sender_id', 'fourth_level', 'fourth_level_confirm_date')->get();
+//     $fifth_level = SevenLevelTransaction::with('senderDetail')->where('five_level', $user_id)->select('id', 'sender_id', 'five_level', 'five_level_confirm_date')->get();
+//     $sixth_level = SevenLevelTransaction::with('senderDetail')->where('six_level', $user_id)->select('id', 'sender_id', 'six_level', 'six_level_confirm_date')->get();
+//     $seventh_level = SevenLevelTransaction::with('senderDetail')->where('seven_level', $user_id)->select('id', 'sender_id', 'seven_level', 'seven_level_confirm_date')->get();
+
+//     // Merge all level transactions into a single collection
+//     $taking_transactions = $taking_transactions->merge($first_level);
+//     $taking_transactions = $taking_transactions->merge($second_level);
+//     $taking_transactions = $taking_transactions->merge($third_level);
+//     $taking_transactions = $taking_transactions->merge($fourth_level);
+//     $taking_transactions = $taking_transactions->merge($fifth_level);
+//     $taking_transactions = $taking_transactions->merge($sixth_level);
+//     $taking_transactions = $taking_transactions->merge($seventh_level);
+
+//     // Return all taking transactions for the user
+//     return $taking_transactions;
+// }
+
 	
 	
 	

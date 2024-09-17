@@ -21,7 +21,10 @@ class SevenLevelTransaction extends Model
         'status',
     
     ];
+    public function senderDetail(){
+        return $this->belongsTo(User::class, 'user_id','sender_id')->select('name','phone','user_id');
 
+    }
    
 
 }

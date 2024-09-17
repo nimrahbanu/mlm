@@ -16,15 +16,15 @@
                     <div class="col-md-12">
                         <div class="form-group">
                             <label for="">{{ TITLE }} *</label>
-                            <input type="text" name="faq_title" class="form-control" value="{{ old('faq_title') }}" autofocus>
+                            <input type="text" name="news_title" class="form-control" value="{{ old('news_title') }}" autofocus>
                         </div>
                         <div class="form-group">
                             <label for="">{{ CONTENT }} *</label>
-                            <textarea name="faq_content" class="form-control editor" cols="30" rows="10">{{ old('faq_content') }}</textarea>
+                            <textarea name="news_content" class="form-control editor" cols="30" rows="10">{{ old('news_content') }}</textarea>
                         </div>
                         <div class="form-group">
                             <label for="">{{ ORDER }}</label>
-                            <input type="text" name="faq_order" class="form-control" value="{{ old('faq_order', '0') }}">
+                            <input type="text" name="news_order" class="form-control" value="{{ old('news_order', '0') }}">
                         </div>
                     </div>
                 </div>

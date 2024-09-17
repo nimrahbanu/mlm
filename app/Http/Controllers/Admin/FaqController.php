@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Department;
-use App\Models\Faq;
+use App\Models\News;
 use App\Models\Support;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -17,12 +17,12 @@ class FaqController extends Controller
     }
 
     public function index() {
-        $faq = Faq::orderBy('faq_order')->get();
-        return view('admin.faq_view', compact('faq'));
+        $news = News::orderBy('news_order')->get();
+        return view('admin.news_view', compact('news'));
     }
 
     public function create() {
-        return view('admin.faq_create');
+        return view('admin.news_create');
     }
 
     public function store(Request $request) {
@@ -31,28 +31,28 @@ class FaqController extends Controller
             return redirect()->back()->with('error', env('PROJECT_NOTIFICATION'));
         }
 
-        $faq = new Faq();
-        $data = $request->only($faq->getFillable());
+        $news = new news();
+        $data = $request->only($news->getFillable());
 
         $request->validate([
-            'faq_title' => 'required',
-            'faq_content' => 'required',
-            'faq_order' => 'numeric|min:0|max:32767'
+            'news_title' => 'required',
+            'news_content' => 'required',
+            'news_order' => 'numeric|min:0|max:32767'
         ],[
-            'faq_title.required' => ERR_TITLE_REQUIRED,
-            'faq_content.required' => ERR_CONTENT_REQUIRED,
-            'faq_order.numeric' => ERR_ORDER_NUMERIC,
-            'faq_order.min' => ERR_ORDER_MIN,
-            'faq_order.max' => ERR_ORDER_MAX,
+            'news_title.required' => ERR_TITLE_REQUIRED,
+            'news_content.required' => ERR_CONTENT_REQUIRED,
+            'news_order.numeric' => ERR_ORDER_NUMERIC,
+            'news_order.min' => ERR_ORDER_MIN,
+            'news_order.max' => ERR_ORDER_MAX,
         ]);
 
-        $faq->fill($data)->save();
+        $news->fill($data)->save();
         return redirect()->route('admin_news_view')->with('success', SUCCESS_ACTION);
     }
 
     public function edit($id) {
-        $faq = Faq::findOrFail($id);
-        return view('admin.faq_edit', compact('faq'));
+        $news = News::findOrFail($id);
+        return view('admin.news_edit', compact('news'));
     }
 
     public function update(Request $request, $id) {
@@ -61,22 +61,22 @@ class FaqController extends Controller
             return redirect()->back()->with('error', env('PROJECT_NOTIFICATION'));
         }
 
-        $faq = Faq::findOrFail($id);
-        $data = $request->only($faq->getFillable());
+        $news = News::findOrFail($id);
+        $data = $request->only($news->getFillable());
 
         $request->validate([
-            'faq_title' => 'required',
-            'faq_content' => 'required',
-            'faq_order' => 'numeric|min:0|max:32767'
+            'news_title' => 'required',
+            'news_content' => 'required',
+            'news_order' => 'numeric|min:0|max:32767'
         ],[
-            'faq_title.required' => ERR_TITLE_REQUIRED,
-            'faq_content.required' => ERR_CONTENT_REQUIRED,
-            'faq_order.numeric' => ERR_ORDER_NUMERIC,
-            'faq_order.min' => ERR_ORDER_MIN,
-            'faq_order.max' => ERR_ORDER_MAX,
+            'news_title.required' => ERR_TITLE_REQUIRED,
+            'news_content.required' => ERR_CONTENT_REQUIRED,
+            'news_order.numeric' => ERR_ORDER_NUMERIC,
+            'news_order.min' => ERR_ORDER_MIN,
+            'news_order.max' => ERR_ORDER_MAX,
         ]);
 
-        $faq->fill($data)->save();
+        $news->fill($data)->save();
         return redirect()->route('admin_news_view')->with('success', SUCCESS_ACTION);
     }
 
@@ -86,14 +86,14 @@ class FaqController extends Controller
             return redirect()->back()->with('error', env('PROJECT_NOTIFICATION'));
         }
 
-        $faq = Faq::findOrFail($id);
-        $faq->delete();
+        $news = News::findOrFail($id);
+        $news->delete();
         return Redirect()->back()->with('success', SUCCESS_ACTION);
     }
 
    
     public function news_change_status($id) {
-        $customer = Faq::find($id);
+        $customer = News::find($id);
         if($customer->status == 'Active') {
             if(env('PROJECT_MODE') == 0) {
                 $message=env('PROJECT_NOTIFICATION');
@@ -165,8 +165,8 @@ class FaqController extends Controller
             return redirect()->back()->with('error', env('PROJECT_NOTIFICATION'));
         }
 
-        $faq = Department::findOrFail($id);
-        $faq->delete();
+        $news = Department::findOrFail($id);
+        $news->delete();
         return Redirect()->back()->with('success', SUCCESS_ACTION);
     } 
     public function support(){
@@ -219,8 +219,8 @@ class FaqController extends Controller
             return redirect()->route('support')->with('success', SUCCESS_ACTION);
         }
     public function api_index(){
-        $faq = Faq::orderBy('faq_order')->get();
-        if ($faq) {
+        $news = News::orderBy('news_order')->get();
+        if ($news) {
             $success = $data;
             return $this->sendResponse($success, 'Retrieve successfully.');
         } else {

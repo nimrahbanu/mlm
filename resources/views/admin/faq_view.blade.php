@@ -22,11 +22,11 @@
                     </tr>
                     </thead>
                     <tbody>
-                        @foreach($faq as $row)
+                        @foreach($news as $row)
                         <tr>
                             <td>{{ $loop->iteration }}</td>
-                            <td>{{ $row->faq_title }}</td>
-                            <td>{{ $row->faq_order }}</td>
+                            <td>{{ $row->news_title }}</td>
+                            <td>{{ $row->news_order }}</td>
                             <td>@if ($row->status == 'Active')
                             <a href="" onclick="customerStatus({{ $row->id }})"><input type="checkbox" checked
                                     data-toggle="toggle" data-on="Active" data-off="Pending" data-onstyle="success"

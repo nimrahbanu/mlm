@@ -6,7 +6,6 @@ use App\Models\HelpStar;
 class Helper
 
 {
-
     public function generateUniqueUserId() {
         do {
             $userId = 'PHC' . mt_rand(100000, 999999); // Generate a random 6-digit number
@@ -408,5 +407,8 @@ class Helper
         
     //     return $ruby_active_users;
     // }
+
+   
+
     
 }
