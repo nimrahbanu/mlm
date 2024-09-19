@@ -810,7 +810,7 @@ class CustomerAuthController extends BaseController
     private function taking_help_n($user_id) {
         // Fetch the HelpStar data based on the given user_id
         $admin = HelpStar::where('receiver_id', $user_id)->where('confirm_date',null)
-                    ->select('sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
+                    ->select('id','sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
                     ->get();
     
         // Ensure that the $admin collection is not empty before proceeding
@@ -1998,6 +1998,37 @@ public function taking_transaction($user_id) {
         return $this->sendError('Transaction not found or invalid level/user ID.');
 
     }
+}
+
+    public function giving_person_confirmation(Request $request){
+        $validator = Validator::make($request->all(),[
+            'user_id' => 'required|exists:users,user_id',
+            'id' => 'required|exists:help_star,id',
+            'status' => 'required|in:Active,Pending,Rejected',
+        ]);
+        if($validator->fails()){
+            return $this->sendError('Validation Error.',$validator->errors());
+        }
+       
+        $user_id = $request->user_id;
+        $id = $request->id;
+        $status = $request->status;
+    // Fetch the HelpStar data based on the given user_id
+    $help_stars = HelpStar::where('receiver_id', $user_id)->where('id',$id)
+                ->select('id','sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
+                ->first();
+
+    // Ensure that the $help_stars collection is not empty before proceeding
+    if (isset($help_stars)) {
+        // Map over the $help_stars collection to append sender and receiver details
+        $help_stars->confirm_date = now();
+        $help_stars->status = $status;
+        $help_stars->save();
+        return $this->sendResponse($help_stars, 'User Data Retrieve Successfully.');
+
+    }
+
+    return null; // Return null if no data is found
 }
     
 }
