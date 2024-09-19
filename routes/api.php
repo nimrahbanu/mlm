@@ -84,6 +84,7 @@ Route::get('customer/active-users', [CustomerAuthController::class,'active_users
 Route::post('customer/bank-detail', [UserController::class,'bank_detail']);//dome
 Route::post('customer/support-form', [CustomerAuthController::class,'support_form']);//dome
 Route::post('customer/third_level_users/{id}', [CustomerAuthController::class,'third_level_users']);//dome
+Route::post('customer/seven-level-confirmation', [CustomerAuthController::class,'seven_level_confirmation']);//dome
 
 
 // Route::get('testRediss', function () {

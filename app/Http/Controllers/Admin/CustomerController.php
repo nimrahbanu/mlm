@@ -13,6 +13,8 @@ use App\Models\HelpGold;
 use App\Models\HelpPlatinum;
 use App\Models\HelpRuby;
 use App\Models\HelpEmrald;
+use App\Models\SevenLevelTransaction;
+
 use App\Models\HelpDiamond;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -713,10 +715,53 @@ class CustomerController extends Controller
             // ->toArray();
         
             return view('admin.redis_data_view', compact('success'));
-      
-      
-      
+      }
+      public function test(Request $request){
+        dd(1);
+    
+        $user_id = 'PHC123456';
+        $userData = User::where('user_id',$user_id);
+        $user = $userData->with('package:id,package_name')
+                ->first(); 
+        $active = $userData->where('is_active',0)->whereNotNull('status')->whereNotNull('activated_date')->first();
+        if (!$userData) {
+            return $this->sendError('User not found.');
         }
+        $restricted_user_ids = [
+            'PHC123456', 'PHC674962', 'PHC636527', 'PHC315968', 'PHC985875', 
+            'PHC746968', 'PHC666329', 'PHC415900', 'PHC173882', 'PHC571613', 
+            'PHC663478', 'PHC875172'
+        ];
         
+      
+        if (!in_array($user_id, $restricted_user_ids)) {
+            $seven_level_transaction = $this->seven_level_transaction($user_id);
+            $giving_help = $this->giving_help($user_id);
+        } else {
+            // Handle the case when the user_id is restricted (optional)
+            $seven_level_transaction = null; // or you can return an error message, e.g., $this->sendError('Restricted user.');
+            $giving_help = null; // or you can return an error message, e.g., $this->sendError('Restricted user.');
+        }
+        // return $seven_level_transaction;
+        // $taking_help_n = $this->taking_help_n($user_id); // Newly added function
+        // $taking_transaction = $this->taking_transaction($user_id); // Newly added function
+        $success = [
+            'user' => $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id']),
+            'package_name' => $user->package ? $user->package->package_name : null,
+            'direct_team' => User::where('sponsor_id', $user_id)->count(),
+            'total_team' => $user->getTotalDescendantCount(),
+            'referral_link' => url('api/customer/registration/' . $user_id),
+            'giving_help' => $giving_help,
+            'seven_level_transaction' => $seven_level_transaction,
+            // 'taking_help' => $taking_help_n,
+            // 'taking_seven_level_transaction' => $taking_transaction, // Newly added key
+            'taking_sponcer' => 0,
+            'e_pin' => EPinTransfer::where('member_id', $user_id)->where('is_used', '0')->count(),
+            'news' => News::where('status', 'Active')->select('news_title','news_content','news_order')->orderBy('news_order')->get()
+        ];
+        if($user){
+            return $success;
+        }
+    }
         
 }

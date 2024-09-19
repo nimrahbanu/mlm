@@ -712,38 +712,66 @@ class CustomerAuthController extends BaseController
             'user_id' => 'required|exists:users,user_id',
         ]);
         if($validator->fails()){
-            return $this->sendError('Validation Error.',$validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
-       
+    
         $user_id = $request->user_id;
-        $userData = User::where('user_id',$user_id);
-        $user = $userData->with('package:id,package_name')
-                ->first(); 
-        $active = $userData->where('is_active',0)->whereNotNull('status')->whereNotNull('activated_date')->first();
-        if (!$userData) {
+        $restricted_user_ids = [
+            'PHC123456', 'PHC674962', 'PHC636527', 'PHC315968', 'PHC985875', 
+            'PHC746968', 'PHC666329', 'PHC415900', 'PHC173882', 'PHC571613', 
+            'PHC663478', 'PHC875172'
+        ];
+    try{
+         $user = User::where('user_id', $user_id)
+            ->with('package:id,package_name')
+            ->first();
+
+        if (!$user) {
             return $this->sendError('User not found.');
         }
-        $seven_level_transaction = $this->seven_level_transaction($user_id);
+        $active = $user->where('is_active',0)->whereNotNull('status')->whereNotNull('activated_date')->first();
+         
+       
+        $seven_level_transaction = null;
+        $giving_help = null;
+        
+     
+        if (!in_array($user_id, $restricted_user_ids)) {
+            $seven_level_transaction = $this->seven_level_transaction($user_id);
+            $giving_help = $this->giving_help($user_id);
+        } 
+
+        // return $seven_level_transaction;
         $taking_help_n = $this->taking_help_n($user_id); // Newly added function
         $taking_transaction = $this->taking_transaction($user_id); // Newly added function
+
         $success = [
-            'user' => $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id']),
+            'user' => $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id','sponsor_id']),
             'package_name' => $user->package ? $user->package->package_name : null,
             'direct_team' => User::where('sponsor_id', $user_id)->count(),
-            'total_team' => $user->getTotalDescendantCount(),
+            'total_team' => $this->getAllTeamMembers($user_id),
             'referral_link' => url('api/customer/registration/' . $user_id),
-            'giving_help' => $active ?? $this->giving_help($user_id),
+            'giving_help' => $giving_help,
             'seven_level_transaction' => $seven_level_transaction,
             'taking_help' => $taking_help_n,
-            'taking_transaction' => $taking_transaction, // Newly added key
-            'taking_sponcer' => 0,
+            'taking_seven_level_transaction' => $taking_transaction, // Newly added key
+            // 'taking_sponcer' => 0,
             'e_pin' => EPinTransfer::where('member_id', $user_id)->where('is_used', '0')->count(),
             'news' => News::where('status', 'Active')->select('news_title','news_content','news_order')->orderBy('news_order')->get()
         ];
-        if($user){
-            return $this->sendResponse($success, 'User Data Retrieve Successfully.');
+        return $this->sendResponse($success, 'User Data Retrieve Successfully.');
+      
+      }catch (\Exception $e) {
+            return $this->sendError('Oops! Something went wrong. Please try again.');
         }
     }
+    public function getAllTeamMembers($userId)
+    {
+        $children = User::where('sponsor_id', $userId)->count();
+    
+        return $children;
+    }
+    
     private function giving_help($user_id) {
         // Fetch the HelpStar data based on the given user_id
         $admin = HelpStar::where('sender_id', $user_id)->where('confirm_date',null)
@@ -822,11 +850,14 @@ class CustomerAuthController extends BaseController
     
         
     private function seven_level_transaction($user_id) {
+        $restricted_user_ids = ['PHC123456', 'PHC674962', 'PHC636527', 'PHC315968', 'PHC985875', 'PHC746968', 'PHC666329', 'PHC415900', 'PHC173882', 'PHC571613', 'PHC663478', 'PHC875172'];
+        if(in_array($user_id,$restricted_user_ids )){
+            return null;
+        }
         // Fetch the seven-level transaction for the given user
         $seven_level_transaction = SevenLevelTransaction::where('sender_id', $user_id)
-            ->select('first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level')
-            ->first();
-    
+            ->select('first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level')->first();
+     
         // Check if a transaction was found
         if (!$seven_level_transaction) {
             return null; // Return null or handle the error as needed
@@ -834,14 +865,21 @@ class CustomerAuthController extends BaseController
     
         // Define the levels to iterate through
         $levels = ['first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level'];
-    
+     
         foreach ($levels as $level) {
             if ($seven_level_transaction->$level) {
                 // Fetch the user details for each level if the level has a value
-                $seven_level_transaction->$level = User::where('user_id', $seven_level_transaction->$level)
+                $user = User::where('user_id', $seven_level_transaction->$level)
                     ->select('name', 'phone', 'phone_pay_no', 'user_id')
                     ->first();
-                    // $seven_level_transaction->title = $level .'income';
+    
+                // Check if the user_id is in the restricted list
+                if ($user && in_array($user->user_id, $restricted_user_ids)) {
+                    $user->phone_pay_no = null; // Hide phone_pay_no for restricted users
+                }
+    
+                // Assign the fetched user object back to the level in seven_level_transaction
+                $seven_level_transaction->$level = $user;
             }
         }
     
@@ -850,51 +888,124 @@ class CustomerAuthController extends BaseController
     
     
 
-    private function taking_transaction($user_id) {
-        // Define sponsor level amounts and titles for each level
-        $sponsor_level_data = [
-            ['amount' => 100, 'title' => 'First Level'],
-            ['amount' => 50, 'title' => 'Second Level'],
-            ['amount' => 40, 'title' => 'Third Level'],
-            ['amount' => 20, 'title' => 'Fourth Level'],
-            ['amount' => 20, 'title' => 'Fifth Level'],
-            ['amount' => 10, 'title' => 'Sixth Level'],
-            ['amount' => 10, 'title' => 'Seventh Level']
-        ];
+    // private function taking_transaction($user_id) {
+    //     // Define sponsor level amounts and titles for each level
+    //     $sponsor_level_data = [
+    //         ['amount' => 100, 'title' => 'First Level'],
+    //         ['amount' => 50, 'title' => 'Second Level'],
+    //         ['amount' => 40, 'title' => 'Third Level'],
+    //         ['amount' => 20, 'title' => 'Fourth Level'],
+    //         ['amount' => 20, 'title' => 'Fifth Level'],
+    //         ['amount' => 10, 'title' => 'Sixth Level'],
+    //         ['amount' => 10, 'title' => 'Seventh Level']
+    //     ];
     
-        // Initialize an empty collection to store all taking transactions
-        $taking_transactions = collect();
+    //     // Initialize an empty collection to store all taking transactions
+    //     $taking_transactions = collect();
     
-        // Fetch transactions where the user is the receiver at any level
-        $levels = [
-            'first_level', 'second_level', 'third_level', 
-            'fourth_level', 'five_level', 'six_level', 'seven_level'
-        ];
+    //     // Fetch transactions where the user is the receiver at any level
+    //     $levels = [
+    //         'first_level', 'second_level', 'third_level', 
+    //         'fourth_level', 'five_level', 'six_level', 'seven_level'
+    //     ];
     
-        // Iterate through each level and retrieve corresponding transactions
-        foreach ($levels as $index => $level) {
-            $column = $level; // level column name (e.g., 'first_level', 'second_level', etc.)
-            $confirm_date_column = $level . '_confirm_date'; // confirm date column (e.g., 'first_level_confirm_date')
+    //     // Iterate through each level and retrieve corresponding transactions
+    //     foreach ($levels as $index => $level) {
+    //         $column = $level; // level column name (e.g., 'first_level', 'second_level', etc.)
+    //         $confirm_date_column = $level . '_confirm_date'; // confirm date column (e.g., 'first_level_confirm_date')
     
-            $transactions = SevenLevelTransaction::with('senderDetail')
-                ->where($column, $user_id)
-                ->select('id', 'sender_id', $column, $confirm_date_column)
-                ->get()
-                ->map(function($transaction) use ($sponsor_level_data, $index) {
-                    // Add level-specific data to each transaction
-                    $transaction->level = $sponsor_level_data[$index]['title']; // Level title
-                    $transaction->amount = $sponsor_level_data[$index]['amount']; // Level amount
-                    return $transaction;
-                });
+    //         $transactions = SevenLevelTransaction::with('senderDetail')
+    //             ->where($column, $user_id)
+    //             ->select('id', 'sender_id', $column, $confirm_date_column)
+    //             ->get()
+    //             ->map(function($transaction) use ($sponsor_level_data, $index) {
+    //                 // Add level-specific data to each transaction
+    //                 $transaction->level = $sponsor_level_data[$index]['title']; // Level title
+    //                 $transaction->amount = $sponsor_level_data[$index]['amount']; // Level amount
+    //                 return $transaction;
+    //             });
     
-            // Merge the retrieved transactions into the collection
-            $taking_transactions = $taking_transactions->merge($transactions);
-        }
+    //         // Merge the retrieved transactions into the collection
+    //         $taking_transactions = $taking_transactions->merge($transactions);
+    //     }
     
-        // Return all taking transactions for the user with level and amount information
-        return $taking_transactions;
+    //     // Return all taking transactions for the user with level and amount information
+    //     return $taking_transactions;
+    // }
+    // private function taking_transaction($user_id) {
+    //     // Define sponsor level amounts and titles for each level
+    //     $sponsor_level_data = [
+    //         ['amount' => 100, 'title' => 'First Level'],
+    //         ['amount' => 50, 'title' => 'Second Level'],
+    //         ['amount' => 40, 'title' => 'Third Level'],
+    //         ['amount' => 20, 'title' => 'Fourth Level'],
+    //         ['amount' => 20, 'title' => 'Fifth Level'],
+    //         ['amount' => 10, 'title' => 'Sixth Level'],
+    //         ['amount' => 10, 'title' => 'Seventh Level']
+    //     ];
+    
+    //     // Initialize an empty collection to store all taking transactions
+    //     $taking_transactions = collect();
+    
+    //     // Define the levels for the query
+    //     $levels = [
+    //         'first_level', 'second_level', 'third_level', 
+    //         'fourth_level', 'five_level', 'six_level', 'seven_level'
+    //     ];
+    
+    //     // Iterate through each level and retrieve corresponding transactions
+    //     foreach ($levels as $index => $level) {
+    //         $level_column = $level; // e.g., 'first_level', 'second_level', etc.
+    //         $status_column = $level . '_status'; // e.g., 'first_level_status', 'second_level_status', etc.
+    //         $confirm_date_column = $level . '_confirm_date'; // e.g., 'first_level_confirm_date', etc.
+    
+    //         // Retrieve transactions where status is 0
+    //         $transactions = SevenLevelTransaction::with('senderDetail')
+    //             ->where($level_column, $user_id)   // User matches this level
+    //             // ->select('id', 'sender_id', $level_column, $status_column, $confirm_date_column)
+    //             ->get();
+              
+    //         // Merge the retrieved transactions into the collection
+    //         $taking_transactions = $taking_transactions->merge($transactions);
+    //     }
+    
+    //     // Return all taking transactions for the user with level and amount information
+    //     return $taking_transactions;
+    // }
+    
+public function taking_transaction($user_id) {
+    // Define levels and their corresponding status and confirm date columns
+    $levels = [
+        'first_level' => 'first_level_status',
+        'second_level' => 'second_level_status',
+        'third_level' => 'third_level_status',
+        'fourth_level' => 'fourth_level_status',
+        'five_level' => 'five_level_status',
+        'six_level' => 'six_level_status',
+        'seven_level' => 'seven_level_status',
+    ];
+
+    // Initialize a collection to store the separate level transactions
+    $separate_transactions = collect();
+
+    // Iterate through each level and retrieve corresponding transactions
+    foreach ($levels as $level => $status) {
+        $transactions = SevenLevelTransaction::where($level, $user_id) // Match user ID with level
+            ->where($status, '0') // Filter transactions where status is 0
+            ->select('id', 'sender_id', $level, $status) // Select necessary fields
+            ->get()
+            ->map(function ($transaction) use ($level) {
+                $transaction->level = $level; // Add the level name to the transaction
+                return $transaction;
+            });
+
+        // Merge the retrieved transactions into the collection
+        $separate_transactions = $separate_transactions->merge($transactions);
     }
-    
+
+    // Return the collection of separate level transactions
+    return $separate_transactions;
+}
 
 	
 // private function taking_transaction($user_id) {
@@ -1115,7 +1226,7 @@ class CustomerAuthController extends BaseController
     
             // Check how many times this user has received help
             $helpReceived = HelpStar::where('receiver_id', $currentUserId)->count();
-            dd($helpReceived);
+            // dd($helpReceived);
             if ($helpReceived < $receiverPackage->member) {
                 break;  // Found a user who can still receive help
             }
@@ -1822,5 +1933,71 @@ class CustomerAuthController extends BaseController
             return $this->sendError('Oops! Unable to  update password. Please try again.');
         }
     }
- 
+    // public function seven_level_confirmation(Request $request){
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required|exists:users,user_id', 
+    //         'level_key' => 'required',
+    //         'id' => 'required',
+    //     ]);
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    //     $level_key = $request->level_key;
+    //     $status = $level_key.'_status';
+    //     $confirm_date = $level_key.'_confirm_date';
+    //     $level_key = $request->level_key;
+    //     $user_id = $request->user_id;
+    //     $id = $request->id;
+    //     $seven_level_transaction = SevenLevelTransaction::where('id', $id)->where($level_key, $user_id)
+    //     ->select($status,$confirm_date)
+    //     ->first();
+    //     if($seven_level_transaction){
+    //         $seven_level_transaction->$confirm_date = now();
+    //         $seven_level_transaction->$status = '1';
+    //         $seven_level_transaction->save()
+    //     }
+    // }
+    public function seven_level_confirmation(Request $request) {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,user_id', 
+            'level_key' => 'required',
+            'id' => 'required',
+        ]);
+    
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+    
+        $level_key = $request->level_key;
+        $status = $level_key . '_status';
+        $confirm_date = $level_key . '_confirm_date';
+        $user_id = $request->user_id;
+        $id = $request->id;
+    try{
+
+        // Find the SevenLevelTransaction where the specified level matches the user_id
+        $seven_level_transaction = SevenLevelTransaction::where('id', $id)
+            ->where($level_key, $user_id)
+            ->select('id',$status, $confirm_date)
+            ->first();
+        if ($seven_level_transaction) {
+            // Update the confirmation date and status
+            // $seven_level_transaction->$confirm_date = now();
+            // $seven_level_transaction->$status = 1;
+               // Update the confirmation date and status
+               $seven_level_transaction->{$confirm_date} = now();
+               $seven_level_transaction->{$status} = 1;
+            if($seven_level_transaction->save()){
+
+                return $this->sendResponse([], 'Level confirmation updated successfully.');
+            }  // Fixed the missing semicolon
+        } else {
+            return $this->sendError('Transaction not found or invalid level/user ID.');
+        }
+    }catch(Exception $e){
+        return $this->sendError('Transaction not found or invalid level/user ID.');
+
+    }
+}
+    
 }
