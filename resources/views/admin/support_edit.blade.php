@@ -25,10 +25,10 @@
                         <tr>
                             <td>{{ PHOTO }}</td>
                             <td>
-                                @if($support->user_image == '')
+                                   @if($support->user_image == '')
                                 <img src="{{ asset('uploads/user_photos/default_photo.jpg') }}" class="w_100">
                                 @else
-                                <img src="{{ asset('uploads/user_photos/'.$support->user_image) }}" class="w_100">
+                                <img src="{{ asset('uploads/support-form/'.$support->user_image) }}" class="w_100">
                                 @endif
                             </td>
                         </tr>

@@ -30,8 +30,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 
-Route::get('sponser_help', [RegistrationController::class,'sponser_help']); //dome
-Route::post('star_active_users', [RegistrationController::class,'star_active_users']); //dome
 Route::post('customer/registration/{id?}', [RegistrationController::class,'registration_store']); //dome
 
 
@@ -55,9 +53,7 @@ Route::post('customer/view-direct', [CustomerAuthController::class,'view_direct'
 
 Route::post('customer/view-downline', [CustomerAuthController::class,'view_downline']); //dome
 
-Route::post('customer/helping-tree', [CustomerAuthController::class,'helping-tree']);//------------------------------
-
-Route::post('customer/level-team-report', [CustomerAuthController::class,'level-team-report']);//------------------------------
+// --------------------------
 
 Route::post('customer/help-history', [CustomerAuthController::class,'help_history']);//dome
 
@@ -94,3 +90,7 @@ Route::post('customer/giving-person-confirmation', [CustomerAuthController::clas
 //     $value = $redis->get('foo');
 //     return response()->json(['redis_value' => $value]);
 // });
+// Route::get('sponser_help', [RegistrationController::class,'sponser_help']); //dome
+// Route::post('star_active_users', [RegistrationController::class,'star_active_users']); //dome
+Route::post('customer/helping-tree', [CustomerAuthController::class,'helping-tree']);//------------------------------
+Route::post('customer/level-team-report', [CustomerAuthController::class,'level-team-report']);//------------------------------

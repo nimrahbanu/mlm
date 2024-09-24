@@ -753,7 +753,7 @@ class CustomerAuthController extends BaseController
             'referral_link' => url('api/customer/registration/' . $user_id),
             'giving_help' => $giving_help,
             'seven_level_transaction' => $seven_level_transaction,
-            'taking_help' => $taking_help_n,
+            'receiving_help' => $taking_help_n,
             'taking_seven_level_transaction' => $taking_transaction, // Newly added key
             // 'taking_sponcer' => 0,
             'e_pin' => EPinTransfer::where('member_id', $user_id)->where('is_used', '0')->count(),
@@ -1050,8 +1050,10 @@ public function taking_transaction($user_id) {
         }
        
         $user_id = $request->user_id;
-        $user = User::where('user_id',$user_id)->first(); // Use with() to eager load the package relationship
-        $bank_details = Bank::where('user_id',$user_id)->first(); // Use with() to eager load the package relationship
+        $user = User::where('user_id',$user_id)->select('id','user_id','name','email',
+        'phone','sponsor_id','phone_pay_no','registration_code','is_active','is_green',
+        'package_id','activated_date','status','green_date','created_at')->first(); // Use with() to eager load the package relationship
+        $bank_details = Bank::where('user_id',$user_id)->select("id","user_id","district","state","address","pin_code","bank_name","account_number","ifsc_code","branch","account_holder_name","upi","paytm","phone_pe","google_pay")->first(); // Use with() to eager load the package relationship
         if (!$user) {
             return $this->sendError('User not found.');
         }
@@ -1381,7 +1383,75 @@ public function taking_transaction($user_id) {
         }
         return $this->sendResponse($name, 'Retrieve successfully.');
     }
+    // public function view_downline(Request $request) {
+    //     // Validate the request input
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required|exists:users,user_id',
+    //         'fromDate' => 'nullable|date', // Optional date field with date validation
+    //         'toDate' => 'nullable|date',   // Optional date field with date validation
+    //         'status' => 'nullable|string', // Optional status field
+    //     ]);
+    
+    //     // If validation fails, return the first error
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    
+    //     // Create a query instance for the User model
+    //     $user_id = $request->user_id; // Use sponsor_id to filter
+    //     $query = User::where('sponsor_id', $user_id); // Use sponsor_id to filter
+    
+    //     if ($request->fromDate) {
+    //         $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+    //         $query->where('created_at', '>=', $fromDate);
+    //     }
+    
+    //     // Filter by toDate
+    //     if ($request->toDate) {
 
+    //         $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+    //         $query->where('created_at', '<=', $toDate);
+    //     }
+    
+    //     // Filter by status
+    //     if ($request->status) {
+    //         $query->where('status', $request->status);
+    //     }
+    
+    //     // Execute the query and get the results
+    //     $view_direct = $query->select('id','user_id','name','phone','created_at','activated_date','sponsor_id','status')->get();
+    //     $view_direct->map(function ($user) {
+    //         $user->sponsor_name = $this->get_name($user->sponsor_id);
+    //         return $user;
+    //     });
+
+    //     // Return the filtered list of direct users
+    //     return $this->sendResponse($view_direct, 'Retrieved successfully.');
+    // }
+    
+        public function view_downlinen(Request $request)
+        {
+            // Validate the request input
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required|exists:users,user_id',
+            ]);
+        
+            // If validation fails, return the first error
+            if ($validator->fails()) {
+                return $this->sendError($validator->errors()->first());
+            }
+        
+            // Find the user by their user_id
+            $user = User::where('sponsor_id', $request->user_id)->first();
+       
+            // Get all downline users using the recursive relationship
+            $downline_users = $user->allReferrals()->get();
+            dd($downline_users);
+            // Return the downline users
+            return $this->sendResponse($downline_users, 'Retrieved successfully.');
+        }
+        
+    
 
     // public function view_downline(Request $request) {
     //     $validator = Validator::make($request->all(), [
@@ -1424,59 +1494,59 @@ public function taking_transaction($user_id) {
     
     //     return $this->sendResponse($customers, 'Retrieve successfully.');
     // }
-    public function view_downline(Request $request)
-{
-    // Validate the request input
-    $validator = Validator::make($request->all(), [
-        'user_id' => 'required|exists:users,user_id',
-        'fromDate' => 'nullable|date_format:Y-m-d', // Validate date format
-        'toDate' => 'nullable|date_format:Y-m-d',   // Validate date format
-        'status' => 'nullable|string',
-    ]);
+//     public function view_downline(Request $request)
+// {
+//     // Validate the request input
+//     $validator = Validator::make($request->all(), [
+//         'user_id' => 'required|exists:users,user_id',
+//         'fromDate' => 'nullable|date_format:Y-m-d', // Validate date format
+//         'toDate' => 'nullable|date_format:Y-m-d',   // Validate date format
+//         'status' => 'nullable|string',
+//     ]);
 
-    // If validation fails, return the first error
-    if ($validator->fails()) {
-        return $this->sendError($validator->errors()->first());
-    }
+//     // If validation fails, return the first error
+//     if ($validator->fails()) {
+//         return $this->sendError($validator->errors()->first());
+//     }
 
-    // Find the sponsor user
-    $user = User::where('user_id', $request->user_id)->select('id','user_id','name','phone','created_at','activated_date','sponsor_id','status')->first();
+//     // Find the sponsor user
+//     $user = User::where('user_id', $request->user_id)->select('id','user_id','name','phone','created_at','activated_date','sponsor_id','status')->first();
 
 
-    // Fetch all direct and indirect members (recursive relationship)
-    $all_members = $user->allReferralsFlat();
+//     // Fetch all direct and indirect members (recursive relationship)
+//     $all_members = $user->allReferralsFlat();
 
-    // Apply additional filters, if necessary
-    $filtered_members = $all_members;
+//     // Apply additional filters, if necessary
+//     $filtered_members = $all_members;
 
-    if ($request->filled('fromDate')) {
-        $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
-        $filtered_members = $filtered_members->filter(function ($user) use ($fromDate) {
-            return $user->created_at >= $fromDate;
-        });
-    }
+//     if ($request->filled('fromDate')) {
+//         $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+//         $filtered_members = $filtered_members->filter(function ($user) use ($fromDate) {
+//             return $user->created_at >= $fromDate;
+//         });
+//     }
 
-    // Filter by toDate
-    if ($request->filled('toDate')) {
-        $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
-        $filtered_members = $filtered_members->filter(function ($user) use ($toDate) {
-            return $user->created_at <= $toDate;
-        });
-    }
+//     // Filter by toDate
+//     if ($request->filled('toDate')) {
+//         $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+//         $filtered_members = $filtered_members->filter(function ($user) use ($toDate) {
+//             return $user->created_at <= $toDate;
+//         });
+//     }
 
-    // Filter by status
-    if ($request->filled('status')) {
-        $filtered_members = $filtered_members->filter(function ($user) use ($request) {
-            return $user->status === $request->status;
-        });
-    }
+//     // Filter by status
+//     if ($request->filled('status')) {
+//         $filtered_members = $filtered_members->filter(function ($user) use ($request) {
+//             return $user->status === $request->status;
+//         });
+//     }
 
-    // Convert the filtered result back to a collection
-    $filteredMembers = $filtered_members->values(); // Reset the keys
+//     // Convert the filtered result back to a collection
+//     $filteredMembers = $filtered_members->values(); // Reset the keys
 
-    // Return the filtered list of all members
-    return $this->sendResponse($filteredMembers, 'Retrieved successfully.');
-}
+//     // Return the filtered list of all members
+//     return $this->sendResponse($filteredMembers, 'Retrieved successfully.');
+// }
 
     // private function getAllDownlineMembersnew($sponsorId) {
     //     // Initialize arrays to hold current and all downline member IDs
@@ -1539,6 +1609,71 @@ public function taking_transaction($user_id) {
     //     return $this->sendResponse($customers, 'Retrieve successfully.');
 
     // }
+    // public function view_downline(Request $request)
+    // {
+    //     // Validate the request input
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required|exists:users,user_id',
+    //         'fromDate' => 'nullable|date_format:Y-m-d', // Validate date format
+    //         'toDate' => 'nullable|date_format:Y-m-d',   // Validate date format
+    //         'status' => 'nullable|string',
+    //     ]);
+
+    //     // If validation fails, return the first error
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+
+    //     // Find the sponsor user
+    //     $user = User::where('user_id', $request->user_id)->select('id', 'user_id', 'name', 'phone', 'created_at', 'activated_date', 'sponsor_id', 'status')->first();
+
+    //     // Function to get all referrals recursively
+    //     $all_members = collect();
+    //     $getAllReferrals = function($user) use (&$getAllReferrals, &$all_members) {
+    //         // Fetch direct referrals
+    //         $directReferrals = $user->directReferrals()->select('user_id', 'created_at', 'status')->get();
+            
+    //         // Merge direct referrals into the collection
+    //         $all_members = $all_members->merge($directReferrals);
+    //         // Recursively get referrals of referrals
+    //         foreach ($directReferrals as $referral) {
+    //             $getAllReferrals($referral); // Call recursively
+    //         }
+    //     };
+
+    //     // Start recursion from the given user
+    //     $getAllReferrals($user);
+
+    //     // Apply additional filters, if necessary
+    //     $filtered_members = $all_members;
+
+    //     if ($request->filled('fromDate')) {
+    //         $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+    //         $filtered_members = $filtered_members->filter(function ($user) use ($fromDate) {
+    //             return $user->created_at >= $fromDate;
+    //         });
+    //     }
+
+    //     if ($request->filled('toDate')) {
+    //         $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+    //         $filtered_members = $filtered_members->filter(function ($user) use ($toDate) {
+    //             return $user->created_at <= $toDate;
+    //         });
+    //     }
+
+    //     if ($request->filled('status')) {
+    //         $filtered_members = $filtered_members->filter(function ($user) use ($request) {
+    //             return $user->status === $request->status;
+    //         });
+    //     }
+
+    //     // Convert to a collection of user_ids only
+    //     $filtered_user_ids = $filtered_members->pluck('user_id')->values(); // Reset the keys
+
+    //     // Return the filtered list of user IDs
+    //     return $this->sendResponse($filtered_user_ids, 'Retrieved successfully.');
+    // }
+
  
     private function getDownlineMembers($directMembers, &$allMemberIds)
     {
@@ -1635,8 +1770,8 @@ public function taking_transaction($user_id) {
         $user_id = $request->user_id;
 
         // Create query for HelpStar data
-        $query = HelpStar::where('sender_id', $user_id)
-                ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'created_at');
+        $query = HelpStar::where('sender_id', $user_id)->whereNotNull('confirm_date')
+                ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'created_at','status');
 
         // Filter by fromDate if provided
         if ($request->filled('fromDate')) {
@@ -1667,7 +1802,7 @@ public function taking_transaction($user_id) {
     }
 }
 
-
+// S.No.	Sender	Sponsor	Amount	Date	Status	Payment Slip	Transaction No	Narration
     public function taking_help(Request $request) 
     {
       
@@ -1679,10 +1814,35 @@ public function taking_transaction($user_id) {
         }
         try{
             $user_id = $request->user_id;
-            $data = HelpStar::where('receiver_id', $user_id)->with('senderData')->get();
-            return $this->sendResponse($data, 'Data Retrieve successfully.');
+            $data = HelpStar::where('receiver_id', $user_id)
+                ->select('id', 'sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
+                ->with('senderData', 'receiverByData')
+                ->get();
+            
+            // Initialize an empty array for the response
+            $response = [];
+            
+            foreach ($data as $item) {
+                $response[] = [
+                    'id' => $item->id,
+                    'sender_name' => $item->senderData->name ?? null,
+                    'sender_phone' => $item->senderData->phone ?? null,
+                    'sender_sponsor_id' => $item->senderData->sponsor_id ?? null,
+                    'sender_sponsor_name' => $item->senderData->sponsor->name ?? null, // Assuming you have a relationship to fetch sponsor data
+                    'sender_sponsor_phone' => $item->senderData->sponsor->phone ?? null, // Assuming you have a relationship to fetch sponsor data
+                    'amount' => $item->amount,
+                    'commitment_date' => $item->commitment_date,
+                    'confirm_date' => $item->confirm_date,
+                    'status' => $item->status,
+                ];
+            }
+            
+            // Return the response
+            return $this->sendResponse($response, 'Data retrieved successfully.');
+            
              
         }catch (\Exception $e) {
+            return $e;
             return $this->sendError('Oops! Something went wrong. Please try again.');
         }
     }
@@ -2031,4 +2191,95 @@ public function taking_transaction($user_id) {
     return null; // Return null if no data is found
 }
     
+public function view_downline(Request $request)
+{
+    // Validate the request input
+    $validator = Validator::make($request->all(), [
+        'user_id' => 'required|exists:users,user_id',
+    ]);
+
+    // If validation fails, return the first error
+    if ($validator->fails()) {
+        return $this->sendError($validator->errors()->first());
+    }
+
+    // Fetch the main user based on user_id
+    $user = User::where('user_id', $request->user_id)->first();
+
+    // Initialize collection for all downline members
+    $allDownlineMembers = collect();
+
+    // Get all downline members (direct and indirect)
+    $this->getDownlinesRecursive($user, $allDownlineMembers);
+
+    // Apply filters (if any)
+    if ($request->filled('fromDate')) {
+        $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+        $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
+            return $member->created_at >= $fromDate;
+        });
+    }
+
+    if ($request->filled('toDate')) {
+        $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+        $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
+            return $member->created_at <= $toDate;
+        });
+    }
+
+    if ($request->filled('status')) {
+        $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
+            return $member->status === $request->status;
+        });
+    }
+
+    // Return the filtered list of all downline members
+    return $this->sendResponse($allDownlineMembers->values(), 'Retrieved successfully.');
+}
+
+/**
+ * Recursively fetch all downlines (direct and indirect)
+ */
+private function getDownlinesRecursive($user, &$allDownlineMembers)
+{
+    // Get direct referrals of the user
+    $directReferrals = $user->directReferrals()->get();
+
+    foreach ($directReferrals as $referral) {
+        // Add this referral to the collection
+        $allDownlineMembers->push($referral);
+
+        // Recursively get downlines of this referral
+        $this->getDownlinesRecursive($referral, $allDownlineMembers);
+    }
+}
+
+private function getDownlineMemberss($directMembers, &$allMemberIds)
+    {
+        // Get all users with sponsor_id in the list of directMembers
+        $downlineMembers = User::whereIn('sponsor_id', $directMembers)->pluck('id');
+        // If there are downline members, process them
+        if ($downlineMembers->isNotEmpty()) {
+            // Add downline members to the allMemberIds array
+            $allMemberIds = array_merge($allMemberIds, $downlineMembers->toArray());
+    
+            // Recurse to get further downline members
+            $this->getDownlineMemberss($downlineMembers, $allMemberIds);
+        }
+    }
+/**
+ * Function to recursively fetch all downlines for a user.
+ */
+private function getAllDownlinesRecursive($user) {
+    // Fetch direct referrals (downlines) for this user
+    $downlines = User::where('sponsor_id', $user->user_id)->get();
+
+    // Recursively fetch their downlines
+    foreach ($downlines as $downline) {
+        $downlines = $downlines->merge($this->getAllDownlinesRecursive($downline));
+    }
+
+    return $downlines;
+}
+
 }

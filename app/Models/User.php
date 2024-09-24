@@ -112,4 +112,11 @@ class User extends Authenticatable
         }
         return $referrals;
     }
+   
+    // Recursive relationship to get all downlines
+    public function allReferrals()
+    {
+        return $this->directReferrals()->with('allReferrals');
+    }
+    
 }
