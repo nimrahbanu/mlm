@@ -17,12 +17,12 @@ class EPinTransfer extends Model
         'provided_by', 'member_id', 'member_name', 'balance', 'quantity', 'status', 'flag','e_pin','is_used'
     ];
     public function MemberData(){
-        return $this->hasOne(User::class,'id','member_id');
+        return $this->hasOne(User::class,'user_id','member_id');
     }
     public function providedByData(){
-        return $this->hasOne(User::class,'id','provided_by');
+        return $this->hasOne(User::class,'user_id','provided_by');
     }
     public function EpinUsed(){
-        return $this->hasOne(User::class,'registration_code','e_pin')->select('name','id','registration_code');
+        return $this->hasOne(User::class,'registration_code','e_pin')->select('name','id','user_id','registration_code');
     }
 }

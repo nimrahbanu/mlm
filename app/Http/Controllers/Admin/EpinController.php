@@ -42,7 +42,7 @@ class EpinController extends Controller
         $property_category = EPinTransfer::orderBy('id', 'asc')->paginate(10);
         $g_setting = GeneralSetting::find(1);
         // $users = User::select('id','name')->where('is_green',1)->where('is_active',1)->get();
-        $users = User::select('id','name')->get();
+        $users = User::select('id','name','user_id')->get();
         return view('admin.e_pin.e_pin_transfer_create', compact('property_category','users','g_setting'));
     }
     
@@ -101,11 +101,11 @@ class EpinController extends Controller
         //     'member_id.required' => ERR_NAME_REQUIRED,
            
         ]);
-        $users = User::find($request->member_id);
+        $users = User::where('user_id',$request->member_id)->first();
         $member_name=  $users->name;
             $quantity = $request->quantity;
-            $user_data = Auth::user();
-            if($request->provided_by==1){
+             
+            if($request->provided_by=='PHC123456'){
                 
                 $epins = EPin::orderBy('id', 'desc')->take($quantity)->get();
                 foreach ($epins as $epin) {
@@ -170,7 +170,7 @@ class EpinController extends Controller
                     return redirect()->back()->with('error', 'An error occurred while transferring the E-pins: ' . $e->getMessage());
                 }
             } else {
-                return redirect()->back()->with('error', 'Your E-pin quantity is less than the required amount.');
+                return redirect()->back()->with('error', 'Your E-pin quantity='.$epin_count.' is less than the required amount.');
             }
         return redirect()->route('e_pin_transfer')->with('success', SUCCESS_ACTION);
     }

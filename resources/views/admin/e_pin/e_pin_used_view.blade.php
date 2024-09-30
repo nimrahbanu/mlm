@@ -31,7 +31,7 @@
                             <td>{{@$row->MemberData->name}} <br>({{ @$row->member_id }})</td>
                             <td>{{ @$row->balance }}</td>
                             <td>{{ @$row->e_pin }} </td>
-                            <td>{{@$row->EpinUsed->name}} <br>({{ @$row->EpinUsed->id }})</td>
+                            <td>{{@$row->EpinUsed->name}} <br>({{ @$row->EpinUsed->user_id }})</td>
                             <td>{{date('d M,Y', strtotime($row->created_at))}} </td>
 
 

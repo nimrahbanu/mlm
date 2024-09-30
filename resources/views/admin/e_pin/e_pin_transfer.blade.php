@@ -29,10 +29,10 @@
                         <tr>
                         <td>{{ $loop->iteration }}</td>
 
-                            <td>{{ @$row->providedByData->name }} <br> ({{@$row->providedByData->id}})</td>
+                            <td>{{ @$row->providedByData->name }} <br> ({{@$row->providedByData->user_id}})</td>
                             <td>{{ $row->balance }}</td>
                             <td>{{ $row->e_pin }} </td>
-                            <td>{{ @$row->MemberData->name }} <br> ({{@$row->MemberData->id}})</td>   
+                            <td>{{ @$row->MemberData->name }} <br> ({{@$row->MemberData->user_id}})</td>   
                             <td>{{date('d M,Y,H:i:s', strtotime($row->created_at))}} </td>
                            
                         </tr>

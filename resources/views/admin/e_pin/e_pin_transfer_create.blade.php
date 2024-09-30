@@ -17,7 +17,7 @@
                 <label for="">Provided By</label>
                 <select name="provided_by" class="form-control select2">
                     @foreach($users as $row)
-                    <option value="{{ $row->id }}">{{ $row->name }}, ({{ $row->id }})</option>
+                    <option value="{{ $row->user_id }}">{{ $row->name }}, ({{ $row->user_id }})</option>
                     @endforeach
                 </select>
                      <!-- <input type="text" name="provided_by" class="form-control" value="{{ old('provided_by') }}" autofocus> -->
@@ -30,7 +30,7 @@
                 <label for="">Member Name</label>
                 <select name="member_id" class="form-control select2">
                     @foreach($users as $row)
-                    <option value="{{ $row->id }}">{{ $row->name }}, ({{ $row->id }})</option>
+                    <option value="{{ $row->user_id }}">{{ $row->name }}, ({{ $row->user_id }})</option>
                      <!-- <input type="hidden" name="member_id" class="form-control" value="{{ $row->id }}" autofocus> -->
                     @endforeach
                 </select>

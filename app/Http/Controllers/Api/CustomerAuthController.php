@@ -1847,21 +1847,72 @@ public function taking_transaction($user_id) {
         }
     }
 
-    public function view_epin(Request $request){
+    // public function view_epin(Request $request){
+    //     $validator = Validator::make($request->all(), [
+    //         'user_id' => 'required|exists:users,user_id',
+    //     ]);
+    //     if ($validator->fails()) {
+    //         return $this->sendError($validator->errors()->first());
+    //     }
+    //     try{
+    //         $user_id = $request->user_id;
+    //     $data = EPinTransfer::orderBy('id', 'desc')->where('member_id',$user_id)->with('MemberData','providedByData','EpinUsed')->get();
+      
+    //         return $this->sendResponse($data, 'Data Retrieve successfully.');
+             
+    //     }catch (\Exception $e) {
+    //         return $this->sendError('Oops! Something went wrong. Please try again.');
+    //     }
+    // }
+
+    public function view_epin(Request $request)
+    {
+        // Validate the request input
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
         ]);
+        
         if ($validator->fails()) {
             return $this->sendError($validator->errors()->first());
         }
-        try{
+
+        try {
             $user_id = $request->user_id;
-        $data = EPinTransfer::orderBy('id', 'desc')->where('member_id',$user_id)->with('MemberData','providedByData','EpinUsed')->get();
-      
-            return $this->sendResponse($data, 'Data Retrieve successfully.');
-             
-        }catch (\Exception $e) {
-            return $this->sendError('Oops! Something went wrong. Please try again.');
+            $user = User::where('user_id', $user_id)->select('user_id','name')->first();
+
+            // Retrieve e-pin transfer data
+            $epinTransfers = EPinTransfer::orderBy('id', 'desc')
+                ->where('member_id', $user_id)
+                ->where('is_used','1')
+                ->get();
+
+            // Collect the e_pins from the EPinTransfer records
+            $ePins = $epinTransfers->pluck('e_pin')->toArray();
+
+            // Retrieve users who have used these e_pins
+            $usersUsingEPin = User::whereIn('registration_code', $ePins)->select('user_id', 'name', 'email', 'registration_code')->get();
+
+        // Build response data
+        $response = $epinTransfers->map(function($epinTransfer) use ($usersUsingEPin,$user) {
+            // Find the user who used the e-pin
+            $usedBy = $usersUsingEPin->firstWhere('registration_code', $epinTransfer->e_pin);
+
+            return [
+                'e_pin' => $epinTransfer->e_pin,
+                'user_id' => $user->user_id,
+                'user_name' => $user->name,
+                'status' => 'used',
+                'e_pin_created_date' =>date('d M,y', strtotime($epinTransfer->created_at)), 
+                'used_by_user_id' => $usedBy ? $usedBy->user_id : null,
+                'used_by_user_name' => $usedBy ? $usedBy->name : null,
+            ];
+        });
+         
+
+            return $this->sendResponse($response, 'Data retrieved successfully.');
+
+        } catch (\Exception $e) {
+            return $this->sendError('Oops! Something went wrong. Please try again.',$e->getMessage());
         }
     }
 
@@ -1871,7 +1922,7 @@ public function taking_transaction($user_id) {
             'user_id' => 'required|exists:users,user_id',
         ]);
         if ($validator->fails()) {
-            return $this->sendError('Validation Error.', $validator->errors());
+            return $this->sendError($validator->errors()->first());
         }
         try{
             $user_id = $request->user_id;
