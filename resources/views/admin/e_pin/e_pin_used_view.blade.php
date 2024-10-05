@@ -32,7 +32,7 @@
                             <td>{{ @$row->balance }}</td>
                             <td>{{ @$row->e_pin }} </td>
                             <td>{{@$row->EpinUsed->name}} <br>({{ @$row->EpinUsed->user_id }})</td>
-                            <td>{{date('d M,Y', strtotime($row->created_at))}} </td>
+                            <td>{{(($row->created_at))}} </td>
 
 
                              

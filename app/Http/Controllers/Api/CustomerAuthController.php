@@ -975,27 +975,39 @@ class CustomerAuthController extends BaseController
     
 public function taking_transaction($user_id) {
     // Define levels and their corresponding status and confirm date columns
-    $levels = [
-        'first_level' => 'first_level_status',
-        'second_level' => 'second_level_status',
-        'third_level' => 'third_level_status',
-        'fourth_level' => 'fourth_level_status',
-        'five_level' => 'five_level_status',
-        'six_level' => 'six_level_status',
-        'seven_level' => 'seven_level_status',
+      $levels = [
+        'first_level' => ['status' => 'first_level_status', 'amount' => 100],
+        'second_level' => ['status' => 'second_level_status', 'amount' => 50],
+        'third_level' => ['status' => 'third_level_status', 'amount' => 40],
+        'fourth_level' => ['status' => 'fourth_level_status', 'amount' => 20],
+        'five_level' => ['status' => 'five_level_status', 'amount' => 20],
+        'six_level' => ['status' => 'six_level_status', 'amount' => 10],
+        'seven_level' => ['status' => 'seven_level_status', 'amount' => 10],
     ];
 
     // Initialize a collection to store the separate level transactions
     $separate_transactions = collect();
 
     // Iterate through each level and retrieve corresponding transactions
-    foreach ($levels as $level => $status) {
+     
+    foreach ($levels as $level => $details) {
+        $status = $details['status'];
+        $amount = $details['amount'];
+
         $transactions = SevenLevelTransaction::where($level, $user_id) // Match user ID with level
             ->where($status, '0') // Filter transactions where status is 0
             ->select('id', 'sender_id', $level, $status) // Select necessary fields
             ->get()
-            ->map(function ($transaction) use ($level) {
+            ->map(function ($transaction) use ($level, $amount) {
+                // Fetch sender details from the users table
+                $sender = User::where('user_id', $transaction->sender_id)->first(['name', 'phone']);
+                
+                // Add the necessary fields to the transaction object
                 $transaction->level = $level; // Add the level name to the transaction
+                $transaction->name = $sender ? $sender->name : 'Unknown'; // Add sender name
+                $transaction->phone = $sender ? $sender->phone : 'N/A'; // Add sender phone number
+                $transaction->amount = $amount; // Add the corresponding amount for the level
+                
                 return $transaction;
             });
 
@@ -1349,11 +1361,16 @@ public function taking_transaction($user_id) {
     
         // Execute the query and get the results
         $view_direct = $query->select('user_id','name','phone','created_at','activated_date','sponsor_id','status')->get();
+        // $view_direct->map(function ($user) {
+        //     $user->sponsor_name = $this->get_name($user->sponsor_id);
+        //     return $user;
+        // });
         $view_direct->map(function ($user) {
             $user->sponsor_name = $this->get_name($user->sponsor_id);
+        
             return $user;
         });
-
+        
         // Return the filtered list of direct users
         return $this->sendResponse($view_direct, 'Retrieved successfully.');
     }
@@ -1483,7 +1500,8 @@ public function taking_transaction($user_id) {
         $user_id = $request->user_id;
 
         // Create query for HelpStar data
-        $query = HelpStar::where('sender_id', $user_id)->whereNotNull('confirm_date')
+        $query = HelpStar::where('sender_id', $user_id)
+        // ->whereNotNull('confirm_date')
                 ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'created_at','status');
 
         // Filter by fromDate if provided
@@ -1552,15 +1570,17 @@ public function taking_transaction($user_id) {
             foreach ($data as $item) {
                 $response[] = [
                     'id' => $item->id,
-                    'sender_name' => $item->senderData->name ?? null,
-                    'sender_phone' => $item->senderData->phone ?? null,
-                    'sender_sponsor_id' => $item->senderData->sponsor_id ?? null,
-                    'sender_sponsor_name' => $item->senderData->sponsor->name ?? null, // Assuming you have a relationship to fetch sponsor data
-                    'sender_sponsor_phone' => $item->senderData->sponsor->phone ?? null, // Assuming you have a relationship to fetch sponsor data
+                    'sender_name' => isset($item->senderData->name) ? $item->senderData->name : 'Anonymus',
+                    'sender_phone' => isset($item->senderData->phone) ? $item->senderData->phone : null,
+                    'sender_sponsor_id' => isset($item->senderData->sponsor_id) ? $item->senderData->sponsor_id : null,
+                    'sender_sponsor_name' => isset($item->senderData->sponsor->name) ? $item->senderData->sponsor->name : 'Anonymus Sponsor',
+                    'sender_sponsor_phone' => isset($item->senderData->sponsor->phone) ? $item->senderData->sponsor->phone : null,
                     'amount' => $item->amount,
                     'commitment_date' => $item->commitment_date,
                     'confirm_date' => $item->confirm_date,
                     'status' => $item->status,
+
+                     
                 ];
             }
             return $this->sendResponse($response,'Data Retrieved successfully.',$pagination);
@@ -1633,7 +1653,7 @@ public function taking_transaction($user_id) {
                 'user_id' => $user->user_id,
                 'user_name' => $user->name,
                 'status' => $status, // Dynamic status
-                'e_pin_created_date' =>date('d M,y', strtotime($epinTransfer->created_at)), 
+                'e_pin_created_date' =>(($epinTransfer->created_at)), 
                 'used_by_user_id' => $usedBy ? $usedBy->user_id : null,
                 'used_by_user_name' => $usedBy ? $usedBy->name : null,
             ];
@@ -1959,18 +1979,18 @@ public function taking_transaction($user_id) {
         $user_id = $request->user_id;
         $id = $request->id;
         $status = $request->status;
-    // Fetch the HelpStar data based on the given user_id
-    $help_stars = HelpStar::where('receiver_id', $user_id)->where('id',$id)
-                ->select('id','sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
-                ->first();
+        // Fetch the HelpStar data based on the given user_id
+        $help_stars = HelpStar::where('receiver_id', $user_id)->where('id',$id)
+            ->select('id','sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
+            ->first();
 
-    // Ensure that the $help_stars collection is not empty before proceeding
-    if (isset($help_stars)) {
-        // Map over the $help_stars collection to append sender and receiver details
-        $help_stars->confirm_date = now();
-        $help_stars->status = $status;
-        $help_stars->save();
-        return $this->sendResponse($help_stars, 'User Data Retrieve Successfully.');
+        // Ensure that the $help_stars collection is not empty before proceeding
+        if (isset($help_stars)) {
+            // Map over the $help_stars collection to append sender and receiver details
+            $help_stars->confirm_date = now();
+            $help_stars->status = $status;
+            $help_stars->save();
+            return $this->sendResponse($help_stars, 'User Data Retrieve Successfully.');
 
     }
 
@@ -2156,8 +2176,8 @@ public function view_downline(Request $request)
                 'user_id' => $user->user_id,
                 'name' => $user->name,
                 'phone' => $user->phone,
-                'created_at' => date('d M,Y',strtotime($user->created_at)),
-                'activated_date' => date('d M,Y',strtotime($user->activated_date)),
+                'created_at' =>$user->created_at,
+                'activated_date' => $user->activated_date,
                 'sponsor_id' => $user->sponsor_id,
                 'status' => $user->status,
                 'sponsor_name' => $this->get_name($user->sponsor_id),

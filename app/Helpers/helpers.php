@@ -6,7 +6,7 @@ use App\Models\HelpStar;
 class Helper
 
 {
-    public function generateUniqueUserId() {
+    public static function generateUniqueUserId() {
         do {
             $userId = 'PHC' . mt_rand(100000, 999999); // Generate a random 6-digit number
         } while (User::where('user_id', $userId)->exists()); // Check if the user_id already exists
@@ -14,7 +14,7 @@ class Helper
         return $userId;
     }
 
-    public function star_active_users() {
+    public static function star_active_users() {
         $active_users = User::where('is_active', 1)
         ->where('is_green', 1)
         ->where('status', 'Active')

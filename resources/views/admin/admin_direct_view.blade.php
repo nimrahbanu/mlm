@@ -58,8 +58,8 @@
                             {{ $row->phone }}  <br>
                             {{ $row->email }}<br>
                            <b>{{ $row->package->name }} </b></td>
-                        <td>{{date('d M,y', strtotime($row->created_at))  }}</td>
-                        <td>{{date('d M,y', strtotime($row->activated_date))  }}</td>
+                        <td>{{(($row->created_at))  }}</td>
+                        <td>{{(($row->activated_date))  }}</td>
 
                         <td>{{ $row->sponsor_id }} <br> {{ $row->sponsor->name ?? 'anonymous' }}</td>
                         <td>{{ $row->status }}</td>

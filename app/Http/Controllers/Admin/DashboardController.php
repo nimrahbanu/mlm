@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Admin;
 use App\Models\User;
 use App\Models\Admin;
-use App\Models\Epin;
+use App\Models\EPin;
 use App\Models\Property;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;

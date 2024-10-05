@@ -55,8 +55,8 @@
                     <tr>
                         <td>{{ $loop->iteration }}</td>
                          <td>{{ $row->user_id }} <br>{{ $row->name }} <br>{{ $row->phone }} <br>{{ $row->email }}</td>
-                         <td>{{date('d M,y', strtotime($row->created_at))  }}</td>
-                         <td>{{date('d M,y', strtotime($row->activated_date))  }}</td>
+                         <td>{{(($row->created_at))  }}</td>
+                         <td>{{(($row->activated_date))  }}</td>
                         <td>{{ $row->sponsor_id }} <br>{{ $row->sponsor->name ?? 'anonymous' }}</td>
                         <td>{{ $row->status }}</td>
                         <td>{{ $row->status }}</td>

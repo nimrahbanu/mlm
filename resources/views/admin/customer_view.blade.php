@@ -83,8 +83,8 @@
                          {{ $row->phone }} <br>{{ $row->email }}
                         </td>
                       
-                        <td>{{date('d M,y', strtotime($row->created_at))  }}</td>
-                        <td>{{ $row->activated_date ? date('d M,y', strtotime($row->activated_date)) : null  }}
+                        <td>{{(($row->created_at))  }}</td>
+                        <td>{{ $row->activated_date ? (($row->activated_date)) : null  }}
                         <br>
                          {{ $row->is_active == '1' ? 'Active' : 'InActive' }}
                          <select onchange="ActiveDateStatus({{ $row->id }}, this.value)" class ="p-1 {{ $row->is_active == '1' ? 'bg-success' : '' }}">
@@ -94,14 +94,14 @@
                 <input name="memberID" type="text" id="ActiveDateStatus" class="form-control" placeholder="Member ID" value="{{ request('memberID') }}">
 
                         </td>
-                        <td>{{ $row->green_date ? date('d M,y', strtotime($row->green_date)) : null  }}
+                        <td>{{ $row->green_date ? (($row->green_date)) : null  }}
                             <br>
                          {{ $row->is_green == '1' ? 'Active' : 'InActive' }}
                          <select onchange="JoiningDateStatus({{ $row->id }}, this.value)" class ="p-1 {{ $row->is_green == '1' ? 'bg-success' : '' }}">
                          <option  value="1" {{ $row->is_green == '1' ? 'selected' : '' }}>Active</option>
                                 <option value="0" {{ $row->is_green == '0' ? 'selected' : '' }}>Inactive</option>
                             </select>
-                            <input name="green_date" type="date" id="JoiningDateStatus" class="form-control"  value="{{ $row->green_date ? date('d M,y', strtotime($row->green_date)) : null  }}">
+                            <input name="green_date" type="date" id="JoiningDateStatus" class="form-control"  value="{{ $row->green_date ? (($row->green_date)) : null  }}">
 
                         </td>
                         <td> <b>{{ $row->sponsor_id }}</b> <br> {{ ucwords($row->sponsor->name ?? 'anonymous') }}</td>

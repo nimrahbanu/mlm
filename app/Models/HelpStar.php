@@ -27,6 +27,15 @@ class HelpStar extends Model
     }
     public function senderData(){
         return $this->hasOne(User::class,'user_id','sender_id');
+    }
 
+    public function getCreatedAtAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
+    }
+
+    public function getConfirmDateAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
     }
 }

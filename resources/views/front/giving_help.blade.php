@@ -49,7 +49,7 @@
                                             <td class="text-uppercase">{{$detail->receiverByData->name}}  </td> 
                                             <td class="text-uppercase">{{$detail->receiverByData->phone_pay_no}}  </td> 
                                             <td>{{$detail->amount}}  </td> 
-                                            <td>{{date('d M,Y', strtotime($detail->created_at))}} </td>
+                                            <td>{{(($detail->created_at))}} </td>
                                         </tr>
                                     @endforeach
                                     </tbody>

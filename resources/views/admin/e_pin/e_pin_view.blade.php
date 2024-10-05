@@ -49,7 +49,7 @@
                                     <a href="" onclick="epinFlag({{ $row->id }})"><input type="checkbox" data-toggle="toggle" data-on="Active" data-off="Pending" data-onstyle="success" data-offstyle="danger"></a>
                                 @endif
                             </td>
-                            <td>{{date('d M,Y', strtotime($row->created_at))}} </td>
+                            <td>{{(($row->created_at))}} </td>
                             <td>
                                 <a href="{{ route('admin_property_category_delete',$row->id) }}" class="btn btn-danger btn-sm" onClick="return confirm('{{ ARE_YOU_SURE }}');"><i class="fas fa-trash-alt"></i></a>
                             </td>

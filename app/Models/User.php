@@ -118,5 +118,21 @@ class User extends Authenticatable
     {
         return $this->directReferrals()->with('allReferrals');
     }
-    
+   // In your User model
+    public function getCreatedAtAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
+    }
+
+    public function getActivatedDateAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
+    }
+
+    public function getGreenDateAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
+    }
+
+
 }

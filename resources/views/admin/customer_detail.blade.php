@@ -77,7 +77,9 @@
                             </tr>
                             <tr>
                                 <td>activated_date</td>
-                                <td> <input type="datetime-local" class="form-control" name="activated_date" value="{{ $customer_detail->activated_date }}"> </td>
+                                <td> 
+                                <input type="datetime-local" class="form-control" name="activated_date" value="{{ \Carbon\Carbon::parse($customer_detail->getRawOriginal('activated_date'))->format('Y-m-d\TH:i') }}">
+                                </td>
                             </tr>
                             <tr>
                                 <td>green_date</td>
