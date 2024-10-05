@@ -79,7 +79,7 @@ Route::get('customer/active-users', [CustomerAuthController::class,'active_users
 
 Route::post('customer/bank-detail', [UserController::class,'bank_detail']);//dome
 Route::post('customer/support-form', [CustomerAuthController::class,'support_form']);//dome
-.......................1-010-24
+// .......................1-010-24
 Route::post('customer/third_level_users/{id}', [CustomerAuthController::class,'third_level_users']);//dome
 Route::post('customer/seven-level-confirmation', [CustomerAuthController::class,'seven_level_confirmation']);//dome
 Route::post('customer/giving-person-confirmation', [CustomerAuthController::class,'giving_person_confirmation']);//dome
