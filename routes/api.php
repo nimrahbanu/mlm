@@ -72,15 +72,15 @@ Route::post('customer/epin-transfer', [CustomerAuthController::class,'epin_trans
 
 Route::post('customer/logout', [CustomerAuthController::class,'logout']);//------------------------------
 
-Route::get('customer/active_users_id', [CustomerAuthController::class,'active_users_id']);//dome
-Route::get('customer/active-users', [CustomerAuthController::class,'active_users']);//dome
+// Route::get('customer/active_users_id', [CustomerAuthController::class,'active_users_id']);//dome
+// Route::get('customer/active-users', [CustomerAuthController::class,'active_users']);//dome
 // Route::get('testRedis', [CustomerAuthController::class,'testRedis']);//dome
 
 
 Route::post('customer/bank-detail', [UserController::class,'bank_detail']);//dome
 Route::post('customer/support-form', [CustomerAuthController::class,'support_form']);//dome
 // .......................1-010-24
-Route::post('customer/third_level_users/{id}', [CustomerAuthController::class,'third_level_users']);//dome
+// Route::post('customer/third_level_users/{id}', [CustomerAuthController::class,'third_level_users']);//dome
 Route::post('customer/seven-level-confirmation', [CustomerAuthController::class,'seven_level_confirmation']);//dome
 Route::post('customer/giving-person-confirmation', [CustomerAuthController::class,'giving_person_confirmation']);//dome
 

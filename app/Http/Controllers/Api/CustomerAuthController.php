@@ -1384,27 +1384,7 @@ public function taking_transaction($user_id) {
         return $this->sendResponse($name, 'Retrieve successfully.');
     } 
     
-        public function view_downlinen(Request $request)
-        {
-            // Validate the request input
-            $validator = Validator::make($request->all(), [
-                'user_id' => 'required|exists:users,user_id',
-            ]);
         
-            // If validation fails, return the first error
-            if ($validator->fails()) {
-                return $this->sendError($validator->errors()->first());
-            }
-        
-            // Find the user by their user_id
-            $user = User::where('sponsor_id', $request->user_id)->first();
-       
-            // Get all downline users using the recursive relationship
-            $downline_users = $user->allReferrals()->get();
-            dd($downline_users);
-            // Return the downline users
-            return $this->sendResponse($downline_users, 'Retrieved successfully.');
-        }
         
      
  
@@ -1541,17 +1521,31 @@ public function taking_transaction($user_id) {
       
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
+            'perPage' => 'nullable|integer|min:1', // Optional items per page
+            'page' => 'nullable|integer|min:1',
         ]);
         if ($validator->fails()) {
             return $this->sendError($validator->errors()->first());
         }
         try{
             $user_id = $request->user_id;
+            $perPage = $request->get('perPage', 10); // Default to 10 items per page
+            $page = $request->get('page', 1); // Default to page 1
+    
             $data = HelpStar::where('receiver_id', $user_id)
                 ->select('id', 'sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
-                ->with('senderData', 'receiverByData')
-                ->get();
+                ->with('senderData', 'receiverByData');
+
+            $total = $data->count();
+
+            $data = $data->paginate($perPage, ['*'], 'page', $page);
             
+            $pagination = [
+                'current_page' => $page,
+                'last_page' => ceil($total / $perPage),
+                'per_page' => $perPage,
+                'total' => $total,
+            ];
             // Initialize an empty array for the response
             $response = [];
             
@@ -1569,14 +1563,11 @@ public function taking_transaction($user_id) {
                     'status' => $item->status,
                 ];
             }
-            
-            // Return the response
-            return $this->sendResponse($response, 'Data retrieved successfully.');
+            return $this->sendResponse($response,'Data Retrieved successfully.',$pagination);
             
              
         }catch (\Exception $e) {
-            return $e;
-            return $this->sendError('Oops! Something went wrong. Please try again.');
+            return $this->sendError($e->getMessage(),'Oops! Something went wrong. Please try again.');
         }
     }
 
@@ -1603,6 +1594,8 @@ public function taking_transaction($user_id) {
         // Validate the request input
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,user_id',
+            'perPage' => 'nullable|integer|min:1', // Optional items per page
+            'page' => 'nullable|integer|min:1', // Optional page number
         ]);
         
         if ($validator->fails()) {
@@ -1613,37 +1606,46 @@ public function taking_transaction($user_id) {
             $user_id = $request->user_id;
             $user = User::where('user_id', $user_id)->select('user_id','name')->first();
 
+            $perPage = $request->get('perPage', 10); // Default to 10 items per page
+            $page = $request->get('page', 1); // Default to page 1
+
             // Retrieve e-pin transfer data
-            $epinTransfers = EPinTransfer::orderBy('id', 'desc')
-                ->where('member_id', $user_id)
-                ->where('is_used','1')
-                ->get();
+            $epinTransfers = EPinTransfer::where('member_id', $user_id)
+            ->orderBy('id', 'desc')
+            ->paginate($perPage);
 
             // Collect the e_pins from the EPinTransfer records
             $ePins = $epinTransfers->pluck('e_pin')->toArray();
 
             // Retrieve users who have used these e_pins
-            $usersUsingEPin = User::whereIn('registration_code', $ePins)->select('user_id', 'name', 'email', 'registration_code')->get();
+            $usersUsingEPin = User::whereIn('registration_code', $ePins)->select('user_id', 'name', 'email', 'registration_code')->get()
+            ->keyBy('registration_code'); // Key by registration_code for quicker access
 
         // Build response data
         $response = $epinTransfers->map(function($epinTransfer) use ($usersUsingEPin,$user) {
             // Find the user who used the e-pin
-            $usedBy = $usersUsingEPin->firstWhere('registration_code', $epinTransfer->e_pin);
-
+            // $usedBy = $usersUsingEPin->firstWhere('registration_code', $epinTransfer->e_pin);
+            $usedBy = $usersUsingEPin->get($epinTransfer->e_pin);
+            $status = $usedBy ? 'used' : 'available'; // Example: change logic based on your needs
+           
             return [
                 'e_pin' => $epinTransfer->e_pin,
                 'user_id' => $user->user_id,
                 'user_name' => $user->name,
-                'status' => 'used',
+                'status' => $status, // Dynamic status
                 'e_pin_created_date' =>date('d M,y', strtotime($epinTransfer->created_at)), 
                 'used_by_user_id' => $usedBy ? $usedBy->user_id : null,
                 'used_by_user_name' => $usedBy ? $usedBy->name : null,
             ];
+            
         });
-         
-
-            return $this->sendResponse($response, 'Data retrieved successfully.');
-
+        $pagination = [
+            'current_page' => $epinTransfers->currentPage(),
+            'last_page' => $epinTransfers->lastPage(),
+            'per_page' => $epinTransfers->perPage(),
+            'total' => $epinTransfers->total(),
+        ];
+        return $this->sendResponse($response, 'Data retrieved successfully.', $pagination);
         } catch (\Exception $e) {
             return $this->sendError('Oops! Something went wrong. Please try again.',$e->getMessage());
         }
@@ -1799,7 +1801,6 @@ public function taking_transaction($user_id) {
         $otpNo    = rand(100000, 999999);
         $user_email_phone = $request['email_or_mobile'];
         $obj = User::where(['phone' => $user_email_phone])->orWhere(['email' => $user_email_phone])->first();
-        // dd($obj->email);
         if($obj && $obj->email){
             $obj->otp = $otpNo;
             try{
@@ -1825,7 +1826,6 @@ public function taking_transaction($user_id) {
                     return $this->sendError('Oops! Unable to resend. Please try again.');
                 }
             }catch (\Exception $e) {
-                dd($e);
                 return $this->sendError('Oops! Unable to resend. Please try again.');
 
             }
@@ -1866,7 +1866,9 @@ public function taking_transaction($user_id) {
 
         $obj = User::where('user_id', $request->user_id)->Where(['otp' => $request->otp])->first();
         if($obj){
-        $obj->password = Hash::make($request->password);
+            $obj->password = Hash::make($request->password);
+            $obj->otp = rand(100000, 999999);
+
         }else{
             return $this->sendError('Oops! Unable to  update password. Please try again.');
         }
@@ -1973,78 +1975,119 @@ public function taking_transaction($user_id) {
     }
 
     return null; // Return null if no data is found
-}
-public function view_downline_a(Request $request)
-{
-    try {
-        // Validate the request input
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,user_id',
-            'fromDate' => 'nullable|date',
-            'toDate' => 'nullable|date',
-            'status' => 'nullable|string',
-        ]);
-
-        // If validation fails, return the first error
-        if ($validator->fails()) {
-            return $this->sendError($validator->errors()->first());
-        }
-
-        $user_id = $request->user_id; // Use sponsor_id to filter
-
-        // Initialize an array to hold all team members
-        $allMembers = [];
-
-        // Fetch direct referrals with eager loading of downlines
-        $directMembers = User::with('directReferrals')->where('sponsor_id', $user_id)->select('sponsor_id','user_id','id','name')->get();
-
-        foreach ($directMembers as $member) {
-            $allMembers[] = $member;
-            $this->addDownlines($member, $allMembers); // Fetch downlines iteratively
-        }
-
-        // Apply filters using collection methods
-        $filteredMembers = collect($allMembers);
-        dd($filteredMembers);
-
-        if ($request->fromDate) {
-            $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
-            $filteredMembers = $filteredMembers->filter(function ($member) use ($fromDate) {
-                return $member->created_at >= $fromDate;
-            });
-        }
-
-        if ($request->toDate) {
-            $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
-            $filteredMembers = $filteredMembers->filter(function ($member) use ($toDate) {
-                return $member->created_at <= $toDate;
-            });
-        }
-
-        if ($request->status) {
-            $filteredMembers = $filteredMembers->filter(function ($member) use ($request) {
-                return $member->status === $request->status;
-            });
-        }
-        // Map additional data (e.g., sponsor names)
-        $filteredMembers->transform(function ($user) {
-            $user->name = $this->get_name($user->sponsor_id);
-            return $user;
-        });
-
-        // Return the filtered list of all team members
-        return $this->sendResponse($filteredMembers->values()->all(), 'Retrieved successfully.');
-
-    } catch (\Exception $e) {
-        // Log the error for debugging
-        \Log::error('Error retrieving direct team members: ' . $e->getMessage());
-        return $this->sendError('An error occurred while retrieving direct team members. Please try again later.');
-    }
-}
+} 
 
 /**
  * Iteratively add downline members for a given user
  */ 
+
+//  public function view_downline(Request $request)
+// {
+//     try {
+//         // Validate the request input
+//         $validator = Validator::make($request->all(), [
+//             'user_id' => 'required|exists:users,user_id',
+//             'fromDate' => 'nullable|date',
+//             'toDate' => 'nullable|date',
+//             'status' => 'nullable|string',
+//             'perPage' => 'nullable|integer|min:1', // Optional items per page
+//             'page' => 'nullable|integer|min:1',
+//         ]);
+
+//         // If validation fails, return the first error
+//         if ($validator->fails()) {
+//             return $this->sendError($validator->errors()->first());
+//         }
+
+//         $user_id = $request->user_id;
+
+//         // Initialize an array to hold all team members
+//         $uniqueMembers = collect();
+    
+
+//         // Fetch direct referrals of the user
+//         $directMembers = User::with('directReferrals')->where('sponsor_id', $user_id)->get();
+
+//         // Use a unique set to avoid duplicates
+
+//         // Gather all members
+//         $this->gatherMembers($directMembers, $uniqueMembers);
+
+//         // Apply filters using collection methods
+//         if ($request->fromDate) {
+//             $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+//             $uniqueMembers = $uniqueMembers->filter(function ($member) use ($fromDate) {
+//                 return $member->created_at >= $fromDate;
+//             });
+//         }
+
+//         if ($request->toDate) {
+//             $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+//             $uniqueMembers = $uniqueMembers->filter(function ($member) use ($toDate) {
+//                 return $member->created_at <= $toDate;
+//             });
+//         }
+
+//         if ($request->status) {
+//             $uniqueMembers = $uniqueMembers->filter(function ($member) use ($request) {
+//                 return $member->status === $request->status;
+//             });
+//         }
+//         $perPage = $request->get('perPage', 10); // Default to 10 items per page
+//         $page = $request->get('page', 1); // Default to page 1
+//         $total = $uniqueMembers->count();
+//         $paginatedMembers = $uniqueMembers->slice(($page - 1) * $perPage, $perPage)->values();
+
+//         $pagination = [
+//             'current_page' => isset($page) ?$page : 5,
+//             'last_page' => ceil($total / $perPage),
+//             'per_page' => $perPage,
+//             'total' => $total,
+//         ];
+//         // Transform the members into a flat structure
+//         $flatMembers = $uniqueMembers->map(function ($user) {
+//             return [
+//                 'user_id' => $user->user_id,
+//                 'name' => $user->name,
+//                 'phone' => $user->phone,
+//                 'created_at' => date('d M,Y',strtotime($user->created_at)),
+//                 'activated_date' => date('d M,Y',strtotime($user->activated_date)),
+//                 'sponsor_id' => $user->sponsor_id,
+//                 'status' => $user->status,
+//                 'sponsor_name' => $this->get_name($user->sponsor_id),
+//             ];
+//         });
+      
+//             return $this->sendResponse(
+//                $flatMembers->values()->all(),
+//                $pagination,
+//             );
+//         // Return the flat list of all team members
+//         return $this->sendResponse($flatMembers->values()->all(), 'Retrieved successfully.');
+
+//     } catch (\Exception $e) {
+//         // Log the error for debugging
+//         \Log::error('Error retrieving team members: ' . $e->getMessage());
+//         return $this->sendError($e->getMessage(),'An error occurred while retrieving team members. Please try again later.');
+//     }
+// }
+
+/**
+ * Gather all members recursively while avoiding duplicates
+ */
+// private function gatherMembers($members, &$uniqueMembers)
+// {
+//     foreach ($members as $member) {
+//         // Check if the member is already in the unique list
+//         if (!$uniqueMembers->contains('user_id', $member->user_id)) {
+//             $uniqueMembers->push($member); // Add to unique members
+//             // Recursively gather downlines
+//             $this->gatherMembers($member->directReferrals, $uniqueMembers);
+//         }
+//     }
+// }
+
+
 public function view_downline(Request $request)
 {
     try {
@@ -2054,6 +2097,8 @@ public function view_downline(Request $request)
             'fromDate' => 'nullable|date',
             'toDate' => 'nullable|date',
             'status' => 'nullable|string',
+            'perPage' => 'nullable|integer|min:1', // Optional items per page
+            'page' => 'nullable|integer|min:1',    // Optional page number
         ]);
 
         // If validation fails, return the first error
@@ -2061,57 +2106,90 @@ public function view_downline(Request $request)
             return $this->sendError($validator->errors()->first());
         }
 
-        $user_id = $request->user_id; // Use sponsor_id to filter
+        $user_id = $request->user_id;
+        $perPage = $request->get('perPage', 10); // Default to 10 items per page
+        $page = $request->get('page', 1); // Default to page 1
 
-        // Initialize an array to hold all team members
-        $allMembers = [];
+        // Initialize a collection to hold all team members
+        $uniqueMembers = collect();
 
-        // Fetch direct referrals with eager loading of downlines
+        // Fetch direct referrals of the user
         $directMembers = User::with('directReferrals')->where('sponsor_id', $user_id)->get();
 
-        foreach ($directMembers as $member) {
-            $allMembers[] = $member;
-            $this->addDownlines($member, $allMembers); // Fetch downlines iteratively
-        }
-
-        // Apply filters using collection methods
-        $filteredMembers = collect($allMembers);
-
+        // Gather all members
+        $this->gatherMembers($directMembers, $uniqueMembers);
+ 
         if ($request->fromDate) {
             $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
-            $filteredMembers = $filteredMembers->filter(function ($member) use ($fromDate) {
+            $uniqueMembers = $uniqueMembers->filter(function ($member) use ($fromDate) {
                 return $member->created_at >= $fromDate;
             });
         }
 
         if ($request->toDate) {
             $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
-            $filteredMembers = $filteredMembers->filter(function ($member) use ($toDate) {
+            $uniqueMembers = $uniqueMembers->filter(function ($member) use ($toDate) {
                 return $member->created_at <= $toDate;
             });
         }
 
         if ($request->status) {
-            $filteredMembers = $filteredMembers->filter(function ($member) use ($request) {
+            $uniqueMembers = $uniqueMembers->filter(function ($member) use ($request) {
                 return $member->status === $request->status;
             });
         }
+        // Paginate the results
+        $total = $uniqueMembers->count();
+        $paginatedMembers = $uniqueMembers->slice(($page - 1) * $perPage, $perPage)->values();
 
-        // Map additional data (e.g., sponsor names)
-        $filteredMembers->transform(function ($user) {
-            $user->sponsor_name = $this->get_name($user->sponsor_id);
-            return $user;
+        // Prepare pagination data
+        $pagination = [
+            'current_page' =>  $page,
+            'last_page' => ceil($total / $perPage),
+            'per_page' => $perPage,
+            'total' => $total,
+        ];
+
+        // Transform to flat structure
+        $flatMembers = $paginatedMembers->map(function ($user) {
+            return [
+                'user_id' => $user->user_id,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'created_at' => date('d M,Y',strtotime($user->created_at)),
+                'activated_date' => date('d M,Y',strtotime($user->activated_date)),
+                'sponsor_id' => $user->sponsor_id,
+                'status' => $user->status,
+                'sponsor_name' => $this->get_name($user->sponsor_id),
+            ];
         });
 
-        // Return the filtered list of all team members
-        return $this->sendResponse($filteredMembers->values()->all(), 'Retrieved successfully.');
+        // Return the paginated list of all team members
+        return $this->sendResponse(
+             $flatMembers->values()->all(),'Retrieved successfully.',$pagination);
 
     } catch (\Exception $e) {
         // Log the error for debugging
-        \Log::error('Error retrieving direct team members: ' . $e->getMessage());
-        return $this->sendError('An error occurred while retrieving direct team members. Please try again later.');
+        \Log::error('Error retrieving team members: ' . $e->getMessage());
+        return $this->sendError('An error occurred while retrieving team members. Please try again later.');
     }
 }
+
+/**
+ * Gather all members recursively while avoiding duplicates
+ */
+private function gatherMembers($members, &$uniqueMembers)
+{
+    foreach ($members as $member) {
+        // Check if the member is already in the unique list
+        if (!$uniqueMembers->contains('user_id', $member->user_id)) {
+            $uniqueMembers->push($member); // Add to unique members
+            // Recursively gather downlines
+            $this->gatherMembers($member->directReferrals, $uniqueMembers);
+        }
+    }
+}
+
 
 /**
  * Iteratively add downline members for a given user
@@ -2156,21 +2234,40 @@ public function view_downline_n(Request $request)
         $this->getDownlinesRecursive_nimrah($user, $allDownlineMembers);
 
         // Apply filters (if any)
-        if ($request->filled('fromDate')) {
+        // if ($request->filled('fromDate')) {
+        //     $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+        //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
+        //         return $member->created_at >= $fromDate;
+        //     });
+        // }
+
+        // if ($request->filled('toDate')) {
+        //     $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+        //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
+        //         return $member->created_at <= $toDate;
+        //     });
+        // }
+
+        // if ($request->filled('status')) {
+        //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
+        //         return $member->status === $request->status;
+        //     });
+        // }
+        if ($request->fromDate) {
             $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
             $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
                 return $member->created_at >= $fromDate;
             });
         }
 
-        if ($request->filled('toDate')) {
+        if ($request->toDate) {
             $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
             $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
                 return $member->created_at <= $toDate;
             });
         }
 
-        if ($request->filled('status')) {
+        if ($request->status) {
             $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
                 return $member->status === $request->status;
             });
