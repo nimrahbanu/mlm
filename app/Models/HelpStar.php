@@ -36,6 +36,11 @@ class HelpStar extends Model
 
     public function getConfirmDateAttribute($value)
     {
+        if (is_null($value)) {
+            return null; // Return null if the value is null
+        }
+    
         return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
     }
+    
 }

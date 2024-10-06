@@ -725,7 +725,6 @@ class CustomerAuthController extends BaseController
          $user = User::where('user_id', $user_id)
             ->with('package:id,package_name')
             ->first();
-
         if (!$user) {
             return $this->sendError('User not found.');
         }
@@ -740,31 +739,104 @@ class CustomerAuthController extends BaseController
             $seven_level_transaction = $this->seven_level_transaction($user_id);
             $giving_help = $this->giving_help($user_id);
         } 
+        $total_giving_help_count = $this->total_giving_help_count($user_id);
+        $total_pending_giving_help_count = $this->total_pending_giving_help_count($user_id);
+
+        $total_receiving_help_count = $this->total_receiving_help_count($user_id);
+        $total_pending_receiving_help_count = $this->total_pending_receiving_help_count($user_id);
+        
+        $received_sponsor = $this->received_sponsor($user_id);  
+        $received_pending_sponsor = $this->received_pending_sponsor($user_id); 
+
+        $total_level_income = $this->total_level_income($user_id);  
+        $auto_pool_income = $this->auto_pool_income($user_id); 
 
         // return $seven_level_transaction;
         $taking_help_n = $this->taking_help_n($user_id); // Newly added function
         $taking_transaction = $this->taking_transaction($user_id); // Newly added function
-
+        $a =  $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id','sponsor_id']);
         $success = [
             'user' => $user->only(['id','user_id', 'name', 'activated_date', 'created_at', 'package_id','sponsor_id']),
-            'package_name' => $user->package ? $user->package->package_name : null,
+            'package_name' => isset($user->package->package_name) ? $user->package->package_name : null,
             'direct_team' => User::where('sponsor_id', $user_id)->count(),
             'total_team' => $this->getAllTeamMembers($user_id),
             'referral_link' => url('api/customer/registration/' . $user_id),
             'giving_help' => $giving_help,
             'seven_level_transaction' => $seven_level_transaction,
             'receiving_help' => $taking_help_n,
-            'taking_seven_level_transaction' => $taking_transaction, // Newly added key
+            'taking_seven_level_transaction' => $taking_transaction, 
+            'total_giving_help_count' => (int)$total_giving_help_count,
+            'total_pending_giving_help_count' => (int)$total_pending_giving_help_count,
+            'total_receiving_help_count' => (int)$total_receiving_help_count,
+            'total_pending_receiving_help_count' => (int)$total_pending_receiving_help_count,
+            'received_sponsor' => (int)$received_sponsor,
+            'received_pending_sponsor' => (int)$received_pending_sponsor,
+            'total_level_income' => (int)$total_level_income,
+            'auto_pool_income' => (int)$auto_pool_income,
+
             // 'taking_sponcer' => 0,
             'e_pin' => EPinTransfer::where('member_id', $user_id)->where('is_used', '0')->count(),
             'news' => News::where('status', 'Active')->select('news_title','news_content','news_order')->orderBy('news_order')->get()
         ];
+
         return $this->sendResponse($success, 'User Data Retrieve Successfully.');
       
       }catch (\Exception $e) {
-            return $this->sendError('Oops! Something went wrong. Please try again.');
+            return $this->sendError($e->getMessage(),'Oops! Something went wrong. Please try again.');
         }
     }
+
+
+    public function total_giving_help_count($user_id){
+        $totalAmount = HelpStar::where('sender_id', $user_id)
+        ->whereNotNull('confirm_date')
+        ->sum('amount'); // This will sum the 'amount' field for matching records
+        return  $totalAmount;
+    }
+
+    public function total_pending_giving_help_count($user_id){
+        $totalAmount = HelpStar::where('sender_id', $user_id)
+        ->where('confirm_date',null)
+        ->sum('amount'); // This will sum the 'amount' field for matching records
+        return  $totalAmount;
+    }
+
+
+    public function total_receiving_help_count($user_id){
+        $totalAmount = HelpStar::where('receiver_id', $user_id)
+        ->whereNotNull('confirm_date')
+        ->sum('amount'); // This will sum the 'amount' field for matching records
+        return  $totalAmount;
+    }    
+    public function total_pending_receiving_help_count($user_id){
+        $totalAmount = HelpStar::where('receiver_id', $user_id)
+        ->where('confirm_date',null)
+        ->sum('amount'); // This will sum the 'amount' field for matching records
+        return  $totalAmount;
+    }
+
+    public function received_sponsor($user_id){
+        return  '120';
+
+    }
+
+    public function received_pending_sponsor($user_id){
+        return  '100';
+
+    }
+
+    public function total_level_income($user_id){
+        return  '400';
+
+    }
+
+    public function auto_pool_income($user_id){
+        
+        return  '10';
+    }
+
+
+
     public function getAllTeamMembers($userId)
     {
         $children = User::where('sponsor_id', $userId)->count();
@@ -828,7 +900,7 @@ class CustomerAuthController extends BaseController
                             ->first();
         
                 // Append sender details to the current HelpStar item
-                $item->title = 'Taking Help';
+                $item->title = 'Receiving Help';
                 $item->sender_name = $sender->name ?? null;
                 $item->sender_phone = $sender->phone ?? null;
                 $item->sender_phone_pay_no = $sender->phone_pay_no ?? null;
@@ -856,7 +928,8 @@ class CustomerAuthController extends BaseController
         }
         // Fetch the seven-level transaction for the given user
         $seven_level_transaction = SevenLevelTransaction::where('sender_id', $user_id)
-            ->select('first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level')->first();
+            ->select('first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level',  'first_level_status', 'second_level_status', 'third_level_status', 'fourth_level_status', 
+            'five_level_status', 'six_level_status', 'seven_level_status')->first();
      
         // Check if a transaction was found
         if (!$seven_level_transaction) {
@@ -865,21 +938,34 @@ class CustomerAuthController extends BaseController
     
         // Define the levels to iterate through
         $levels = ['first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level'];
-     
-        foreach ($levels as $level) {
-            if ($seven_level_transaction->$level) {
-                // Fetch the user details for each level if the level has a value
-                $user = User::where('user_id', $seven_level_transaction->$level)
-                    ->select('name', 'phone', 'phone_pay_no', 'user_id')
-                    ->first();
-    
-                // Check if the user_id is in the restricted list
-                if ($user && in_array($user->user_id, $restricted_user_ids)) {
-                    $user->phone_pay_no = null; // Hide phone_pay_no for restricted users
+
+        $status_levels = [
+            'first_level_status', 'second_level_status', 'third_level_status', 
+            'fourth_level_status', 'five_level_status', 'six_level_status', 'seven_level_status'
+        ];
+        
+        foreach ($levels as $index => $level) {
+            if ($seven_level_transaction->{$status_levels[$index]} === 0) {
+                if ($seven_level_transaction->$level) {
+                    // Fetch the user details for each level if the level has a value
+                    $user = User::where('user_id', $seven_level_transaction->$level)
+                        ->select('name', 'phone', 'phone_pay_no', 'user_id')
+                        ->first();
+        
+                    // Check if the user_id is in the restricted list
+                    if ($user && in_array($user->user_id, $restricted_user_ids)) {
+                        $user->phone_pay_no = null; // Hide phone_pay_no for restricted users
+                    }
+        
+                    // Assign the fetched user object back to the level in seven_level_transaction
+                    $seven_level_transaction->$level = $user;
+                }else {
+                    // If there is no user for this level, you can set it to null or handle it as needed
+                    $seven_level_transaction->$level = null;
                 }
-    
-                // Assign the fetched user object back to the level in seven_level_transaction
-                $seven_level_transaction->$level = $user;
+            } else {
+                // If the status is 1, set the level to null or handle it accordingly
+                $seven_level_transaction->$level = null;
             }
         }
     
@@ -989,25 +1075,19 @@ public function taking_transaction($user_id) {
     $separate_transactions = collect();
 
     // Iterate through each level and retrieve corresponding transactions
-     
     foreach ($levels as $level => $details) {
-        $status = $details['status'];
-        $amount = $details['amount'];
-
+        $statusColumn = $details['status']; // Get the status column name
+        $amount = $details['amount']; // Get the corresponding amount
         $transactions = SevenLevelTransaction::where($level, $user_id) // Match user ID with level
-            ->where($status, '0') // Filter transactions where status is 0
-            ->select('id', 'sender_id', $level, $status) // Select necessary fields
+            ->where($statusColumn, '0') // Filter transactions where status is 0
+            ->select('id', 'sender_id', $level, $statusColumn) // Select necessary fields
             ->get()
-            ->map(function ($transaction) use ($level, $amount) {
-                // Fetch sender details from the users table
+            ->map(function ($transaction) use ($level,$amount) {
                 $sender = User::where('user_id', $transaction->sender_id)->first(['name', 'phone']);
-                
-                // Add the necessary fields to the transaction object
                 $transaction->level = $level; // Add the level name to the transaction
                 $transaction->name = $sender ? $sender->name : 'Unknown'; // Add sender name
                 $transaction->phone = $sender ? $sender->phone : 'N/A'; // Add sender phone number
                 $transaction->amount = $amount; // Add the corresponding amount for the level
-                
                 return $transaction;
             });
 
@@ -1163,7 +1243,6 @@ public function taking_transaction($user_id) {
         // Return validation errors if validation fails
         if ($validator->fails()) {
             return $this->sendError($validator->errors()->first());
-
         }
     
         try {
@@ -1490,6 +1569,9 @@ public function taking_transaction($user_id) {
         'user_id' => 'required|exists:users,user_id',
         'fromDate' => 'nullable|date',
         'toDate' => 'nullable|date',
+        'page' => 'nullable|integer|min:1', // Optional page parameter
+        'perPage' => 'nullable|integer|min:1', // Optional per page parameter
+        'status' => 'nullable|in:Pending,Rejected,Active', // Optional per page parameter
     ]);
 
     if ($validator->fails()) {
@@ -1498,12 +1580,19 @@ public function taking_transaction($user_id) {
 
     try {
         $user_id = $request->user_id;
+        $status = $request->status;
+        $page = $request->input('page', 1); // Default to the first page
+        $perPage = $request->input('perPage', 10); // Default to 10 records per page
 
         // Create query for HelpStar data
-        $query = HelpStar::where('sender_id', $user_id)
-        // ->whereNotNull('confirm_date')
-                ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'created_at','status');
+       $query = HelpStar::with('receiverByData:user_id,id,name,phone')
+            ->where('sender_id', $user_id)
+            ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'commitment_date', 'status');
 
+        if ($status) {
+            $query->where('status', $status);
+        }
+      
         // Filter by fromDate if provided
         if ($request->filled('fromDate')) {
             $fromDate = \Carbon\Carbon::parse($request->fromDate)->startOfDay();
@@ -1515,18 +1604,29 @@ public function taking_transaction($user_id) {
             $toDate = \Carbon\Carbon::parse($request->toDate)->endOfDay();
             $query->where('created_at', '<=', $toDate);
         }
-
+        $data = $query->paginate($perPage, ['*'], 'page', $page);
         // Execute query and retrieve results
-        $data = $query->get();
+        $pagination = [
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'per_page' => $data->perPage(),
+            'total' => $data->total(),
+        ];
 
-        // Map over the results to add sponsor and member names
-        $data->map(function ($record) use ($user_id) {
-            $record->sponsor_name = $this->get_name($record->receiver_id);
-            $record->member_name = $this->get_name($user_id);
-            return $record;
+        $result = $data->map(function ($item) {
+            $receiver = $item->receiverByData; // Eager loaded data
+            return [
+                'amount' => $item->amount, // Assuming amount is the e_pin
+                'receiver_id' => $item->receiver_id, // The sender_id as user_id
+                'name' => isset($receiver->name) ? $receiver->name :'Anonymus', // Fetch sender name
+                'status' => $item->status, // Dynamic status
+                'confirm_date' => $item->confirm_date, // Creation date
+                'commitment_date' => $item->commitment_date, // Creation date
+                'receiver_phone' => $receiver ? $receiver->phone : 'N/A',
+            ];
         });
 
-        return $this->sendResponse($data, 'Data retrieved successfully.');
+        return $this->sendResponse($result, 'Data retrieved successfully.', $pagination);
 
     } catch (\Exception $e) {
         return $this->sendError('Oops! Something went wrong. Please try again.');
@@ -1541,11 +1641,13 @@ public function taking_transaction($user_id) {
             'user_id' => 'required|exists:users,user_id',
             'perPage' => 'nullable|integer|min:1', // Optional items per page
             'page' => 'nullable|integer|min:1',
+            'status' => 'nullable|in:Pending,Rejected,Active',
         ]);
         if ($validator->fails()) {
             return $this->sendError($validator->errors()->first());
         }
         try{
+            $status = $request->status; // Default to null
             $user_id = $request->user_id;
             $perPage = $request->get('perPage', 10); // Default to 10 items per page
             $page = $request->get('page', 1); // Default to page 1
@@ -1554,6 +1656,9 @@ public function taking_transaction($user_id) {
                 ->select('id', 'sender_id', 'receiver_id', 'amount', 'commitment_date', 'confirm_date', 'status')
                 ->with('senderData', 'receiverByData');
 
+            if ($status) {
+                $data->where('status', $status);
+            }
             $total = $data->count();
 
             $data = $data->paginate($perPage, ['*'], 'page', $page);
@@ -1572,9 +1677,7 @@ public function taking_transaction($user_id) {
                     'id' => $item->id,
                     'sender_name' => isset($item->senderData->name) ? $item->senderData->name : 'Anonymus',
                     'sender_phone' => isset($item->senderData->phone) ? $item->senderData->phone : null,
-                    'sender_sponsor_id' => isset($item->senderData->sponsor_id) ? $item->senderData->sponsor_id : null,
-                    'sender_sponsor_name' => isset($item->senderData->sponsor->name) ? $item->senderData->sponsor->name : 'Anonymus Sponsor',
-                    'sender_sponsor_phone' => isset($item->senderData->sponsor->phone) ? $item->senderData->sponsor->phone : null,
+                    'sender_user_id' => isset($item->senderData->user_id) ? $item->senderData->user_id : null,
                     'amount' => $item->amount,
                     'commitment_date' => $item->commitment_date,
                     'confirm_date' => $item->confirm_date,

@@ -34,22 +34,30 @@ class AppServiceProvider extends ServiceProvider
 
         $language_menu_texts = LanguageMenuText::get();
         foreach($language_menu_texts as $language) {
-            define($language->lang_key, $language->lang_value);
+            if (!defined($language->lang_key)) {
+                define($language->lang_key, $language->lang_value);
+            } 
         }
 
         $language_website_texts = LanguageWebsiteText::get();
         foreach($language_website_texts as $language) {
-            define($language->lang_key, $language->lang_value);
+            if (!defined($language->lang_key)) {
+                define($language->lang_key, $language->lang_value);
+            } 
         }
 
         $language_notification_texts = LanguageNotificationText::get();
         foreach($language_notification_texts as $language) {
-            define($language->lang_key, $language->lang_value);
+            if (!defined($language->lang_key)) {
+                define($language->lang_key, $language->lang_value);
+            }
         }
 
         $language_admin_panel_texts = LanguageAdminPanelText::get();
         foreach($language_admin_panel_texts as $language) {
-            define($language->lang_key, $language->lang_value);
+            if (!defined($language->lang_key)) {
+                define($language->lang_key, $language->lang_value);
+            }
         }
     }
 }
