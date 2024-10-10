@@ -15,5 +15,10 @@ class SevenLevelTransaction extends Model
 
     }
    
+    public function getCreatedAtAttribute($value)
+    {
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
+    }
 
 }
+ 

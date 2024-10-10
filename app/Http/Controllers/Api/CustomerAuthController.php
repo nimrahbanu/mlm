@@ -31,6 +31,7 @@ use App\Services\TransactionService;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\RateLimiter;
 use App\Mail\AppPasswordResendMail;
+use Illuminate\Pagination\LengthAwarePaginator; // Add this import
 
 class CustomerAuthController extends BaseController
 {
@@ -789,7 +790,7 @@ class CustomerAuthController extends BaseController
 
     public function total_giving_help_count($user_id){
         $totalAmount = HelpStar::where('sender_id', $user_id)
-        ->whereNotNull('confirm_date')
+        ->whereNotNull('confirm_date')->where('status','Active')
         ->sum('amount'); // This will sum the 'amount' field for matching records
         return  $totalAmount;
     }
@@ -804,7 +805,7 @@ class CustomerAuthController extends BaseController
 
     public function total_receiving_help_count($user_id){
         $totalAmount = HelpStar::where('receiver_id', $user_id)
-        ->whereNotNull('confirm_date')
+        ->whereNotNull('confirm_date')->where('status','Active')
         ->sum('amount'); // This will sum the 'amount' field for matching records
         return  $totalAmount;
     }    
@@ -816,19 +817,50 @@ class CustomerAuthController extends BaseController
     }
 
     public function received_sponsor($user_id){
-        return  '120';
+        $sponsor = User::where('user_id', $user_id)->select('sponsor_id')->first();
+        $sponsor_id = isset($sponsor->sponsor_id) ? $sponsor->sponsor_id : '';
 
+        $totalAmount = HelpStar::where('receiver_id', $sponsor_id)->where('sender_id', $user_id)
+        ->whereNotNull('confirm_date')->where('status','Active')
+        ->sum('amount'); // This will sum the 'amount' field for matching records
+        return  $totalAmount;
     }
 
     public function received_pending_sponsor($user_id){
-        return  '100';
+        $sponsor = User::where('user_id', $user_id)->select('sponsor_id')->first();
+        $sponsor_id = isset($sponsor->sponsor_id) ? $sponsor->sponsor_id : '';
 
+        $totalAmount = HelpStar::where('receiver_id', $sponsor_id)->where('sender_id', $user_id)
+        ->where('confirm_date',null)
+        ->sum('amount');  
+        return  $totalAmount;
     }
-
-    public function total_level_income($user_id){
-        return  '400';
-
+    public function total_level_income($user_id) {
+        $levels = [
+            'first_level' => 100,
+            'second_level' => 50,
+            'third_level' => 40,
+            'fourth_level' => 20,
+            'five_level' => 20,
+            'six_level' => 10,
+            'seven_level' => 10,
+        ];
+    
+        $totalIncome = 0;
+    
+        foreach ($levels as $level => $amount) {
+            // Count the number of confirmed records for each level
+            $confirmedCount = SevenLevelTransaction::where($level, $user_id)
+                ->whereNotNull($level.'_confirm_date')
+                ->count(); // Count the records with a non-null confirm_date
+    
+            // Multiply the count by the predefined amount for that level
+            $totalIncome += $confirmedCount * $amount;
+        }
+    
+        return $totalIncome;
     }
+    
 
     public function auto_pool_income($user_id){
         
@@ -1606,12 +1638,7 @@ public function taking_transaction($user_id) {
         }
         $data = $query->paginate($perPage, ['*'], 'page', $page);
         // Execute query and retrieve results
-        $pagination = [
-            'current_page' => $data->currentPage(),
-            'last_page' => $data->lastPage(),
-            'per_page' => $data->perPage(),
-            'total' => $data->total(),
-        ];
+      
 
         $result = $data->map(function ($item) {
             $receiver = $item->receiverByData; // Eager loaded data
@@ -1626,6 +1653,12 @@ public function taking_transaction($user_id) {
             ];
         });
 
+        $pagination = [
+            'current_page' => $data->currentPage(),
+            'last_page' => $data->lastPage(),
+            'per_page' => $data->perPage(),
+            'total' => $data->total(),
+        ];
         return $this->sendResponse($result, 'Data retrieved successfully.', $pagination);
 
     } catch (\Exception $e) {
@@ -2211,221 +2244,221 @@ public function taking_transaction($user_id) {
 // }
 
 
-public function view_downline(Request $request)
-{
-    try {
-        // Validate the request input
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,user_id',
-            'fromDate' => 'nullable|date',
-            'toDate' => 'nullable|date',
-            'status' => 'nullable|string',
-            'perPage' => 'nullable|integer|min:1', // Optional items per page
-            'page' => 'nullable|integer|min:1',    // Optional page number
-        ]);
+    public function view_downline(Request $request)
+    {
+        try {
+            // Validate the request input
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required|exists:users,user_id',
+                'fromDate' => 'nullable|date',
+                'toDate' => 'nullable|date',
+                'status' => 'nullable|string',
+                'perPage' => 'nullable|integer|min:1', // Optional items per page
+                'page' => 'nullable|integer|min:1',    // Optional page number
+            ]);
 
-        // If validation fails, return the first error
-        if ($validator->fails()) {
-            return $this->sendError($validator->errors()->first());
-        }
+            // If validation fails, return the first error
+            if ($validator->fails()) {
+                return $this->sendError($validator->errors()->first());
+            }
 
-        $user_id = $request->user_id;
-        $perPage = $request->get('perPage', 10); // Default to 10 items per page
-        $page = $request->get('page', 1); // Default to page 1
+            $user_id = $request->user_id;
+            $perPage = $request->get('perPage', 10); // Default to 10 items per page
+            $page = $request->get('page', 1); // Default to page 1
 
-        // Initialize a collection to hold all team members
-        $uniqueMembers = collect();
+            // Initialize a collection to hold all team members
+            $uniqueMembers = collect();
 
-        // Fetch direct referrals of the user
-        $directMembers = User::with('directReferrals')->where('sponsor_id', $user_id)->get();
+            // Fetch direct referrals of the user
+            $directMembers = User::with('directReferrals')->where('sponsor_id', $user_id)->get();
 
-        // Gather all members
-        $this->gatherMembers($directMembers, $uniqueMembers);
- 
-        if ($request->fromDate) {
-            $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
-            $uniqueMembers = $uniqueMembers->filter(function ($member) use ($fromDate) {
-                return $member->created_at >= $fromDate;
-            });
-        }
+            // Gather all members
+            $this->gatherMembers($directMembers, $uniqueMembers);
+    
+            if ($request->fromDate) {
+                $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+                $uniqueMembers = $uniqueMembers->filter(function ($member) use ($fromDate) {
+                    return $member->created_at >= $fromDate;
+                });
+            }
 
-        if ($request->toDate) {
-            $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
-            $uniqueMembers = $uniqueMembers->filter(function ($member) use ($toDate) {
-                return $member->created_at <= $toDate;
-            });
-        }
+            if ($request->toDate) {
+                $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+                $uniqueMembers = $uniqueMembers->filter(function ($member) use ($toDate) {
+                    return $member->created_at <= $toDate;
+                });
+            }
 
-        if ($request->status) {
-            $uniqueMembers = $uniqueMembers->filter(function ($member) use ($request) {
-                return $member->status === $request->status;
-            });
-        }
-        // Paginate the results
-        $total = $uniqueMembers->count();
-        $paginatedMembers = $uniqueMembers->slice(($page - 1) * $perPage, $perPage)->values();
+            if ($request->status) {
+                $uniqueMembers = $uniqueMembers->filter(function ($member) use ($request) {
+                    return $member->status === $request->status;
+                });
+            }
+            // Paginate the results
+            $total = $uniqueMembers->count();
+            $paginatedMembers = $uniqueMembers->slice(($page - 1) * $perPage, $perPage)->values();
 
-        // Prepare pagination data
-        $pagination = [
-            'current_page' =>  $page,
-            'last_page' => ceil($total / $perPage),
-            'per_page' => $perPage,
-            'total' => $total,
-        ];
-
-        // Transform to flat structure
-        $flatMembers = $paginatedMembers->map(function ($user) {
-            return [
-                'user_id' => $user->user_id,
-                'name' => $user->name,
-                'phone' => $user->phone,
-                'created_at' =>$user->created_at,
-                'activated_date' => $user->activated_date,
-                'sponsor_id' => $user->sponsor_id,
-                'status' => $user->status,
-                'sponsor_name' => $this->get_name($user->sponsor_id),
+            // Prepare pagination data
+            $pagination = [
+                'current_page' =>  $page,
+                'last_page' => ceil($total / $perPage),
+                'per_page' => $perPage,
+                'total' => $total,
             ];
-        });
 
-        // Return the paginated list of all team members
-        return $this->sendResponse(
-             $flatMembers->values()->all(),'Retrieved successfully.',$pagination);
+            // Transform to flat structure
+            $flatMembers = $paginatedMembers->map(function ($user) {
+                return [
+                    'user_id' => $user->user_id,
+                    'name' => $user->name,
+                    'phone' => $user->phone,
+                    'created_at' =>$user->created_at,
+                    'activated_date' => $user->activated_date,
+                    'sponsor_id' => $user->sponsor_id,
+                    'status' => $user->status,
+                    'sponsor_name' => $this->get_name($user->sponsor_id),
+                ];
+            });
 
-    } catch (\Exception $e) {
-        // Log the error for debugging
-        \Log::error('Error retrieving team members: ' . $e->getMessage());
-        return $this->sendError('An error occurred while retrieving team members. Please try again later.');
-    }
-}
+            // Return the paginated list of all team members
+            return $this->sendResponse(
+                $flatMembers->values()->all(),'Retrieved successfully.',$pagination);
 
-/**
- * Gather all members recursively while avoiding duplicates
- */
-private function gatherMembers($members, &$uniqueMembers)
-{
-    foreach ($members as $member) {
-        // Check if the member is already in the unique list
-        if (!$uniqueMembers->contains('user_id', $member->user_id)) {
-            $uniqueMembers->push($member); // Add to unique members
-            // Recursively gather downlines
-            $this->gatherMembers($member->directReferrals, $uniqueMembers);
+        } catch (\Exception $e) {
+            // Log the error for debugging
+            \Log::error('Error retrieving team members: ' . $e->getMessage());
+            return $this->sendError('An error occurred while retrieving team members. Please try again later.');
         }
     }
-}
 
-
-/**
- * Iteratively add downline members for a given user
- */
-private function addDownlines($user, &$allMembers)
-{
-    // Use a queue to process users
-    $queue = [$user];
-
-    while (!empty($queue)) {
-        $currentUser = array_shift($queue); // Get the next user to process
-        $allMembers[] = $currentUser; // Add to all members
-
-        // Fetch all direct referrals for the current user
-        foreach ($currentUser->directReferrals as $referral) {
-            $queue[] = $referral; // Add referrals to the queue for processing
+    /**
+     * Gather all members recursively while avoiding duplicates
+     */
+    private function gatherMembers($members, &$uniqueMembers)
+    {
+        foreach ($members as $member) {
+            // Check if the member is already in the unique list
+            if (!$uniqueMembers->contains('user_id', $member->user_id)) {
+                $uniqueMembers->push($member); // Add to unique members
+                // Recursively gather downlines
+                $this->gatherMembers($member->directReferrals, $uniqueMembers);
+            }
         }
     }
-}
+
+
+    /**
+     * Iteratively add downline members for a given user
+     */
+    private function addDownlines($user, &$allMembers)
+    {
+        // Use a queue to process users
+        $queue = [$user];
+
+        while (!empty($queue)) {
+            $currentUser = array_shift($queue); // Get the next user to process
+            $allMembers[] = $currentUser; // Add to all members
+
+            // Fetch all direct referrals for the current user
+            foreach ($currentUser->directReferrals as $referral) {
+                $queue[] = $referral; // Add referrals to the queue for processing
+            }
+        }
+    }
  
 
-public function view_downline_n(Request $request)
-{
-    try {
-        // Validate the request input
-        $validator = Validator::make($request->all(), [
-            'user_id' => 'required|exists:users,user_id',
-        ]);
+    public function view_downline_n(Request $request)
+    {
+        try {
+            // Validate the request input
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required|exists:users,user_id',
+            ]);
 
-        // If validation fails, return the first error
-        if ($validator->fails()) {
-            return $this->sendError($validator->errors()->first());
+            // If validation fails, return the first error
+            if ($validator->fails()) {
+                return $this->sendError($validator->errors()->first());
+            }
+
+            // Fetch the main user based on user_id
+            $user = User::where('user_id', $request->user_id)->first();
+
+            // Initialize collection for all downline members
+            $allDownlineMembers = collect();
+
+            // Get all downline members (direct and indirect)
+            $this->getDownlinesRecursive_nimrah($user, $allDownlineMembers);
+
+            // Apply filters (if any)
+            // if ($request->filled('fromDate')) {
+            //     $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+            //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
+            //         return $member->created_at >= $fromDate;
+            //     });
+            // }
+
+            // if ($request->filled('toDate')) {
+            //     $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+            //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
+            //         return $member->created_at <= $toDate;
+            //     });
+            // }
+
+            // if ($request->filled('status')) {
+            //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
+            //         return $member->status === $request->status;
+            //     });
+            // }
+            if ($request->fromDate) {
+                $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
+                $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
+                    return $member->created_at >= $fromDate;
+                });
+            }
+
+            if ($request->toDate) {
+                $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
+                $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
+                    return $member->created_at <= $toDate;
+                });
+            }
+
+            if ($request->status) {
+                $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
+                    return $member->status === $request->status;
+                });
+            }
+
+            // Return the filtered list of all downline members
+            return $this->sendResponse($allDownlineMembers->values(), 'Retrieved successfully.');
+
+        } catch (\Exception $e) {
+            // Log the error message for debugging (optional)
+            \Log::error('Error retrieving downline members: ' . $e->getMessage());
+
+            // Return a generic error message to the user
+            return $this->sendError('An error occurred while retrieving downline members. Please try again later.');
         }
-
-        // Fetch the main user based on user_id
-        $user = User::where('user_id', $request->user_id)->first();
-
-        // Initialize collection for all downline members
-        $allDownlineMembers = collect();
-
-        // Get all downline members (direct and indirect)
-        $this->getDownlinesRecursive_nimrah($user, $allDownlineMembers);
-
-        // Apply filters (if any)
-        // if ($request->filled('fromDate')) {
-        //     $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
-        //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
-        //         return $member->created_at >= $fromDate;
-        //     });
-        // }
-
-        // if ($request->filled('toDate')) {
-        //     $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
-        //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
-        //         return $member->created_at <= $toDate;
-        //     });
-        // }
-
-        // if ($request->filled('status')) {
-        //     $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
-        //         return $member->status === $request->status;
-        //     });
-        // }
-        if ($request->fromDate) {
-            $fromDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->fromDate)->startOfDay();
-            $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($fromDate) {
-                return $member->created_at >= $fromDate;
-            });
-        }
-
-        if ($request->toDate) {
-            $toDate = \Carbon\Carbon::createFromFormat('Y-m-d', $request->toDate)->endOfDay();
-            $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($toDate) {
-                return $member->created_at <= $toDate;
-            });
-        }
-
-        if ($request->status) {
-            $allDownlineMembers = $allDownlineMembers->filter(function ($member) use ($request) {
-                return $member->status === $request->status;
-            });
-        }
-
-        // Return the filtered list of all downline members
-        return $this->sendResponse($allDownlineMembers->values(), 'Retrieved successfully.');
-
-    } catch (\Exception $e) {
-        // Log the error message for debugging (optional)
-        \Log::error('Error retrieving downline members: ' . $e->getMessage());
-
-        // Return a generic error message to the user
-        return $this->sendError('An error occurred while retrieving downline members. Please try again later.');
     }
-}
 
 /**
  * Recursively fetch all downlines (direct and indirect)
  */
-private function getDownlinesRecursive_nimrah($user, &$allDownlineMembers)
-{
-    // Get direct referrals of the user
-    $directReferrals = $user->directReferrals()->get();
+    private function getDownlinesRecursive_nimrah($user, &$allDownlineMembers)
+    {
+        // Get direct referrals of the user
+        $directReferrals = $user->directReferrals()->get();
 
-    foreach ($directReferrals as $referral) {
-        // Add this referral to the collection
-        $allDownlineMembers->push($referral);
+        foreach ($directReferrals as $referral) {
+            // Add this referral to the collection
+            $allDownlineMembers->push($referral);
 
-        // Recursively get downlines of this referral
-        $this->getDownlinesRecursive_nimrah($referral, $allDownlineMembers);
+            // Recursively get downlines of this referral
+            $this->getDownlinesRecursive_nimrah($referral, $allDownlineMembers);
+        }
     }
-}
 
-private function getDownlineMemberss($directMembers, &$allMemberIds)
+    private function getDownlineMemberss($directMembers, &$allMemberIds)
     {
         // Get all users with sponsor_id in the list of directMembers
         $downlineMembers = User::whereIn('sponsor_id', $directMembers)->pluck('id');
@@ -2441,16 +2474,282 @@ private function getDownlineMemberss($directMembers, &$allMemberIds)
 /**
  * Function to recursively fetch all downlines for a user.
  */
-private function getAllDownlinesRecursive($user) {
-    // Fetch direct referrals (downlines) for this user
-    $downlines = User::where('sponsor_id', $user->user_id)->get();
+    private function getAllDownlinesRecursive($user) {
+        // Fetch direct referrals (downlines) for this user
+        $downlines = User::where('sponsor_id', $user->user_id)->get();
 
-    // Recursively fetch their downlines
-    foreach ($downlines as $downline) {
-        $downlines = $downlines->merge($this->getAllDownlinesRecursive($downline));
+        // Recursively fetch their downlines
+        foreach ($downlines as $downline) {
+            $downlines = $downlines->merge($this->getAllDownlinesRecursive($downline));
+        }
+
+        return $downlines;
+    }
+    public function sponser_help(Request $request){
+            $validator = Validator::make($request->all(), [
+                'user_id' => 'required|exists:users,user_id',
+                'doner_id' => 'nullable|exists:users,user_id',
+                'level_name' => 'nullable|exists:packages,id',
+            ]);
+            if ($validator->fails()) {
+                return $this->sendError($validator->errors()->first());
+            }
+            try {
+            $user_id = $request->user_id;
+            $status = $request->status;
+            $page = $request->input('page', 1); // Default to the first page
+            $perPage = $request->input('perPage', 10); // Default to 10 records per page
+            $sponsor = User::where('user_id', $user_id)->select('sponsor_id')->first();
+            $sponsor_id = $sponsor->sponsor_id;
+            // Create query for HelpStar data
+        $query = HelpStar::with('receiverByData:user_id,id,name,phone')
+                ->where('sender_id', $user_id)->where('receiver_id', $sponsor_id)
+                ->select('id', 'sender_id', 'receiver_id', 'amount', 'confirm_date', 'commitment_date', 'status');
+            if ($status) {
+                $query->where('status', $status);
+            }
+        
+            // Filter by fromDate if provided
+            if ($request->filled('fromDate')) {
+                $fromDate = \Carbon\Carbon::parse($request->fromDate)->startOfDay();
+                $query->where('created_at', '>=', $fromDate);
+            }
+
+            // Filter by toDate if provided
+            if ($request->filled('toDate')) {
+                $toDate = \Carbon\Carbon::parse($request->toDate)->endOfDay();
+                $query->where('created_at', '<=', $toDate);
+            }
+            $data = $query->paginate($perPage, ['*'], 'page', $page);
+            // Execute query and retrieve results
+        
+
+            $result = $data->map(function ($item) {
+                $receiver = $item->receiverByData; // Eager loaded data
+                return [
+                    'name' => isset($receiver->name) ? $receiver->name :'Anonymus', // Fetch sender name
+                    'doner_id' => $item->receiver_id, // The sender_id as user_id
+                    'amount' => $item->amount, // Assuming amount is the e_pin
+                    'package_name' => 'Silver', // Dynamic status
+                    'status' => $item->status, // Dynamic status
+                    'confirm_date' => $item->confirm_date, // Creation date
+                    'commitment_date' => $item->commitment_date, // Creation date
+                    'doner_phone' => $receiver ? $receiver->phone : 'N/A',
+                ];
+            });
+
+            $pagination = [
+                'current_page' => $data->currentPage(),
+                'last_page' => $data->lastPage(),
+                'per_page' => $data->perPage(),
+                'total' => $data->total(),
+            ];
+            return $this->sendResponse($result, 'Data retrieved successfully.', $pagination);
+
+        } catch (\Exception $e) {
+            return $this->sendError('Oops! Something went wrong. Please try again.');
+        } 
+    } 
+
+    public function giving_help_level_n(Request $request){
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,user_id',
+            'page' => 'nullable|integer|min:1', // Optional page parameter
+            'perPage' => 'nullable|integer|min:1', // Optional per page parameter
+        ]);
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+         $user_id = $request->user_id;
+          // Pagination settings
+        $page = $request->input('page', 1); // Default to the first page
+        $perPage = $request->input('perPage', 10); // Default to 10 records per page
+            // Fetch the seven-level transaction for the given user
+            $seven_level_transaction = SevenLevelTransaction::where('sender_id', $user_id)
+                ->select('sender_id', 'receiver_id', 'first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level', 'first_level_status', 'second_level_status', 'third_level_status', 'fourth_level_status', 'five_level_status', 'six_level_status', 'seven_level_status', 'first_level_confirm_date', 'second_level_confirm_date', 'third_level_confirm_date', 'fourth_level_confirm_date', 'five_level_confirm_date', 'six_level_confirm_date', 'seven_level_confirm_date', 'extra_details', 'status')->first();
+ 
+                    // Check if transactions were found
+        if (empty($seven_level_transaction)) {
+            return $this->sendError('No transactions found.');
+        }
+
+
+        $results = [];
+        
+            // Define the levels to iterate through
+            $levels = ['first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level'];
+    
+            $status_levels = [
+                'first_level_status', 'second_level_status', 'third_level_status', 
+                'fourth_level_status', 'five_level_status', 'six_level_status', 'seven_level_status'
+            ];
+             $amounts = [100, 50, 40, 20, 20, 10, 10]; // Assuming this is a static amount array
+            $results = [];
+            
+            foreach ($levels as $index => $level) {
+                if ($seven_level_transaction->{$status_levels[$index]} === 0) {
+                    if ($seven_level_transaction->$level) {
+                        // Fetch the user details for each level if the level has a value
+                        $user = User::where('user_id', $seven_level_transaction->$level)
+                            ->select('name', 'phone', 'phone_pay_no', 'user_id')
+                            ->first();
+             
+            
+                        // Assign the fetched user object back to the level in seven_level_transaction
+                        $seven_level_transaction->$level = $user;
+                    }else {
+                        // If there is no user for this level, you can set it to null or handle it as needed
+                        $seven_level_transaction->$level = null;
+                    }
+                } else {
+                    $seven_level_transaction->$level = null;
+                }
+            }
+        
+            // Prepare pagination data
+            
+        return $this->sendResponse($seven_level_transaction, 'Data retrieved successfully.');
     }
 
-    return $downlines;
-}
+    public function receiving_help_level(Request $request) {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,user_id',
+            'page' => 'nullable|integer|min:1', // Optional page parameter
+            'perPage' => 'nullable|integer|min:1', // Optional per page parameter
+        ]);
+    
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+    
+        $levels = [
+            'first_level' => ['status' => 'first_level_status', 'amount' => 100],
+            'second_level' => ['status' => 'second_level_status', 'amount' => 50],
+            'third_level' => ['status' => 'third_level_status', 'amount' => 40],
+            'fourth_level' => ['status' => 'fourth_level_status', 'amount' => 20],
+            'five_level' => ['status' => 'five_level_status', 'amount' => 20],
+            'six_level' => ['status' => 'six_level_status', 'amount' => 10],
+            'seven_level' => ['status' => 'seven_level_status', 'amount' => 10],
+        ];
+    
+        // Initialize a collection to store the results
+        $results = collect();
+        $user_id = $request->user_id;
+    
+        // Iterate through each level and retrieve corresponding transactions
+        foreach ($levels as $level => $details) {
+            $statusColumn = $details['status']; // Get the status column name
+            $amount = $details['amount']; // Get the corresponding amount
+    
+            $transactions = SevenLevelTransaction::where($level, $user_id) // Match user ID with level
+                ->select('id', 'sender_id', $level, $statusColumn, 'created_at') // Select necessary fields
+                ->get()
+                ->map(function ($transaction) use ($level, $amount) {
+                    $sender = User::where('user_id', $transaction->sender_id)->first(['name', 'phone']);
+                    
+                    $status_value = $transaction->{$level . '_status'};
+                    $status_description = $status_value === 1 ? 'Active' : 'Pending'; // Set status description
+                    $level_cleaned = str_replace('_', ' ', $level);
+    
+                    return [
+                        'level' => ucfirst($level_cleaned), // Capitalize level name
+                        'name' => $sender ? $sender->name : 'Unknown', // Add sender name
+                        'phone' => $sender ? $sender->phone : 'N/A', // Add sender phone number
+                        'user_id' => $transaction->sender_id, // Use sender ID for user_id
+                        'status' => $status_description, // Use the status description
+                        'commitment_date' => $transaction->created_at, // Assuming this is the commitment date
+                        'confirm_date' => $transaction->{$level . '_confirm_date'}, // Confirm date
+                        'amount' => $amount, // Corresponding amount
+                    ];
+                });
+    
+            // Merge the retrieved transactions into the results collection
+            $results = $results->merge($transactions);
+        }
+    
+        // Handle pagination if required
+        $perPage = $request->input('perPage', 10);
+        $page = $request->input('page', 1);
+        $paginatedResults = $results->forPage($page, $perPage);
+    
+        $pagination = [
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total' => $results->count(),
+        ];
+    
+        // Return the paginated collection of separate level transactions
+        return $this->sendResponse($paginatedResults, 'Data retrieved successfully.', $pagination);
+    }
+    
+    public function giving_help_level(Request $request) {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,user_id',
+            'page' => 'nullable|integer|min:1', // Optional page parameter
+            'perPage' => 'nullable|integer|min:1', // Optional per page parameter
+        ]);
 
+        if ($validator->fails()) {
+            return $this->sendError($validator->errors()->first());
+        }
+
+        $user_id = $request->user_id;
+
+        $page = $request->input('page', 1); // Default to the first page
+        $perPage = $request->input('perPage', 1); // Default to 7 records per page
+        $seven_level_transactions = SevenLevelTransaction::where('sender_id', $user_id)
+            ->paginate(1);
+        // Check if transactions were found
+        if ($seven_level_transactions->isEmpty()) {
+            return $this->sendError('No transactions found.');
+        }
+        $results = [];
+        $levels = ['first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level'];
+        $amounts = [100, 50, 40, 20, 20, 10, 10]; // Amounts for each level
+        foreach ($seven_level_transactions as $transaction) {
+            foreach ($levels as $index =>$level) {
+                $user_data = null;
+                if ($transaction->$level) {
+                    // Fetch the user details for each level if the level has a value
+                    $user = User::where('user_id', $transaction->$level)
+                        ->select('name', 'phone', 'phone_pay_no', 'user_id')
+                        ->first();
+
+                    // If user exists, assign the user data
+                    if ($user) {
+                        $user_data = $user->toArray(); // Convert user object to array
+                    }
+                }
+                $level_cleaned = str_replace('_', ' ', $level);
+                $status_value = $transaction->{$level . '_status'};
+                $status_description = $status_value === 1 ? 'Active' : 'Pending';
+
+                $results[] = [
+                    'level' => ucfirst($level_cleaned),
+                    'name' => $user_data['name'] ?? null,
+                    'phone' => $user_data['phone'] ?? null,
+                    'phone_pay_no' => $user_data['phone_pay_no'] ?? null,
+                    'user_id' => $user_data['user_id'] ?? null,
+                    'status' => $status_description,
+                    'commitment_date' => $transaction->created_at,
+                    'confirm_date' => $transaction->{$level . '_confirm_date'},
+                    'amount' => $amounts[$index],
+                   ];
+            }
+        }
+         // Implement pagination on the results
+   
+        $pagination = [
+            'current_page' => $seven_level_transactions->currentPage(),
+            'last_page' => $seven_level_transactions->lastPage(),
+            'per_page' => $seven_level_transactions->perPage(),
+            'total' => $seven_level_transactions->total(),
+        ];
+      
+        return $this->sendResponse($results, 'Data retrieved successfully.', $pagination);
+    }
+       
+       
+    
+        
 }

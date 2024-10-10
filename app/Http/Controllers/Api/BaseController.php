@@ -24,13 +24,13 @@ class BaseController extends Controller
 
     //     return response()->json($response, 200);
     // }
-    public function sendResponse($result, $message,$filter=array())
+    public function sendResponse($result, $message,$filter=null)
     {
         $response = [
             'success' => true,
             'message' => $message,
             'data'    => $result,
-            'pagination' =>[$filter],
+            'pagination' =>$filter,
         ];
 
 
