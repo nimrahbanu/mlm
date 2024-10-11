@@ -42,5 +42,13 @@ class HelpStar extends Model
     
         return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
     }
+    public function getCommitmentDateAttribute($value)
+    {
+        if (is_null($value)) {
+            return null; // Return null if the value is null
+        }
+    
+        return \Carbon\Carbon::parse($value)->format('d M, Y h:i A');
+    }
     
 }

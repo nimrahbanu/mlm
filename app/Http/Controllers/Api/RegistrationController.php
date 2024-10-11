@@ -68,11 +68,12 @@ class RegistrationController extends BaseController
             'password' => 'required',
             're_password' => 'required|same:password',
             'sponsor_id' => 'required|exists:users,user_id',
-            'phone' => 'required|numeric', // Example for a 10-digit phone number
+            'phone' => 'required|numeric|digit:10', // Example for a 10-digit phone number
             // 'phone' => 'required|numeric|unique:users,phone', // Example for a 10-digit phone number
-            "phone_pay_no" => "required|numeric",
-            "confirm_phone_pay_no"=>"required|same:phone_pay_no",
+            "phone_pay_no" => "required|numeric|digit:10",
+            "confirm_phone_pay_no"=>"required|same:phone_pay_no|digit:10",
             "registration_code" => "required|unique:users,registration_code"
+            // "registration_code" => "required|unique:users,registration_code"
         ], [
             'name.required' => ERR_NAME_REQUIRED,
             'email.required' => ERR_EMAIL_REQUIRED,
@@ -88,10 +89,9 @@ class RegistrationController extends BaseController
             return $this->sendError($validator->errors()->first(),'Validation Error.');
         }
         try{
-
             $sponsor = User::where('user_id',$request->sponsor_id)
             ->select('id','user_id','sponsor_id','is_active','activated_date','status','is_green','package_id','updated_at')->first();
-           if ($sponsor && $sponsor->is_active == 0) {
+            if ($sponsor && $sponsor->is_active == 0) {
                 if ($sponsor->package_id == 1) {
                     $sponsor->package_id = 2;
                 }
@@ -101,7 +101,7 @@ class RegistrationController extends BaseController
                     // 'package_id' => '1',
                     'activated_date' => now()
                 ]);
-                if($sponsor->is_green == 1 && 'is_active' == 1){
+                if($sponsor->is_green == 1 && $sponsor->is_active == 1){
                     $sponsor->update([
                         'status' => 'Active',
                         // 'package_id' => '2',
@@ -160,7 +160,6 @@ class RegistrationController extends BaseController
 
     public function star_level_transaction($userId){  
        $seven_level =  Helper::seven_level_sponser_transaction($userId);
-
         $data = Helper::star_active_users();
         $lastUserId = Redis::get('last_user_id');
         $receiverUserId = null;
@@ -813,5 +812,44 @@ public function level_upgrade_to_emerald_users($sender_id) {
         $id = $request->id;
       $data =  Helper::sponser_help($id,100);
       return $data;
+      
     }
+
+    public  function test($user_id){
+        $user = User::where('user_id',$user_id)->select('user_id','sponsor_id','id')->with('sponsor:id,user_id')->first();
+        $user_id_sender = $user_id;
+        /**
+         *Implement the 7-level transaction logic start
+        */ 
+        $levels = [100, 50, 40, 20, 20, 10, 10];
+        $sponsorId = $user->sponsor_id;
+        $userId = $user->user_id;
+        $adminId = 'PHC123456'; // The admin ID to be used if a sponsor is not found
+        $sponsorIds = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            if ($user && $user->sponsor) {
+                $sponsorIds[] = $user->sponsor->user_id;
+                $user = $user->sponsor;
+            } else {
+                $sponsorIds[] = $adminId;
+                $user = null; // Exit if no further sponsors are found
+            }
+        }
+
+        $sevenLevelTransaction = SevenLevelTransaction::create([
+            'sender_id' => $userId,
+            'first_level' => $sponsorIds[0],
+            'second_level' => $sponsorIds[1],
+            'third_level' => $sponsorIds[2],
+            'fourth_level' => $sponsorIds[3],
+            'five_level' => $sponsorIds[4],
+            'six_level' => $sponsorIds[5],
+            'seven_level' => $sponsorIds[6],
+            'extra_details' => implode(', ', $levels),
+            'status' => '1'
+        ]);
+        return $user_id;
+    }
+
 }

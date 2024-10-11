@@ -962,7 +962,6 @@ class CustomerAuthController extends BaseController
         $seven_level_transaction = SevenLevelTransaction::where('sender_id', $user_id)
             ->select('first_level', 'second_level', 'third_level', 'fourth_level', 'five_level', 'six_level', 'seven_level',  'first_level_status', 'second_level_status', 'third_level_status', 'fourth_level_status', 
             'five_level_status', 'six_level_status', 'seven_level_status')->first();
-     
         // Check if a transaction was found
         if (!$seven_level_transaction) {
             return null; // Return null or handle the error as needed
@@ -975,10 +974,14 @@ class CustomerAuthController extends BaseController
             'first_level_status', 'second_level_status', 'third_level_status', 
             'fourth_level_status', 'five_level_status', 'six_level_status', 'seven_level_status'
         ];
+        $amounts = [100, 50, 40, 20, 20, 10, 10];
         
         foreach ($levels as $index => $level) {
-            if ($seven_level_transaction->{$status_levels[$index]} === 0) {
+       
+            if ($seven_level_transaction->{$status_levels[$index]} === "0") {
+
                 if ($seven_level_transaction->$level) {
+                 
                     // Fetch the user details for each level if the level has a value
                     $user = User::where('user_id', $seven_level_transaction->$level)
                         ->select('name', 'phone', 'phone_pay_no', 'user_id')
@@ -991,6 +994,7 @@ class CustomerAuthController extends BaseController
         
                     // Assign the fetched user object back to the level in seven_level_transaction
                     $seven_level_transaction->$level = $user;
+                    $seven_level_transaction->$level->amount = $amounts[$index];
                 }else {
                     // If there is no user for this level, you can set it to null or handle it as needed
                     $seven_level_transaction->$level = null;
@@ -1178,6 +1182,26 @@ public function taking_transaction($user_id) {
         'phone','sponsor_id','phone_pay_no','registration_code','is_active','is_green',
         'package_id','activated_date','status','green_date','created_at')->first(); // Use with() to eager load the package relationship
         $bank_details = Bank::where('user_id',$user_id)->select("id","user_id","district","state","address","pin_code","bank_name","account_number","ifsc_code","branch","account_holder_name","upi","paytm","phone_pe","google_pay")->first(); // Use with() to eager load the package relationship
+        if(empty($bank_details)){
+            $bank_details=[
+                "id"=> null,
+                "user_id"=> null,
+                "district"=> null,
+                "state"=> null,
+                "address"=> null,
+                "pin_code"=>null,
+                "bank_name"=> null,
+                "account_number"=> null,
+                "ifsc_code"=> null,
+                "branch"=> null,
+                "account_holder_name"=> null,
+                "upi"=> null,
+                "paytm"=> null,
+                "phone_pe"=> null,
+                "google_pay"=> null
+            ];
+          
+        }
         if (!$user) {
             return $this->sendError('User not found.');
         }
@@ -2126,6 +2150,8 @@ public function taking_transaction($user_id) {
             $help_stars->confirm_date = now();
             $help_stars->status = $status;
             $help_stars->save();
+
+            //need to update status for sender id
             return $this->sendResponse($help_stars, 'User Data Retrieve Successfully.');
 
     }

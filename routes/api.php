@@ -97,3 +97,4 @@ Route::post('customer/helping-tree', [CustomerAuthController::class,'helping-tre
 Route::post('customer/level-team-report', [CustomerAuthController::class,'level-team-report']);//------------------------------
 Route::post('customer/giving-help-level', [CustomerAuthController::class,'giving_help_level']);//------------------------------
 Route::post('customer/receiving-help-level', [CustomerAuthController::class,'receiving_help_level']);//------------------------------
+Route::get('test/{id}', [RegistrationController::class,'test']);//------------------------------
