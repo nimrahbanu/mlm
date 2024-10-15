@@ -91,10 +91,13 @@ Route::post('customer/giving-person-confirmation', [CustomerAuthController::clas
 //     $value = $redis->get('foo');
 //     return response()->json(['redis_value' => $value]);
 // });
+
+Route::post('user-total-transaction', [CustomerAuthController::class,'user_total_transaction']);//------------------------------
+
 Route::post('customer/sponser-help', [CustomerAuthController::class,'sponser_help']); //dome
 // Route::post('star_active_users', [RegistrationController::class,'star_active_users']); //dome
 Route::post('customer/helping-tree', [CustomerAuthController::class,'helping-tree']);//------------------------------
 Route::post('customer/level-team-report', [CustomerAuthController::class,'level-team-report']);//------------------------------
 Route::post('customer/giving-help-level', [CustomerAuthController::class,'giving_help_level']);//------------------------------
 Route::post('customer/receiving-help-level', [CustomerAuthController::class,'receiving_help_level']);//------------------------------
-Route::get('test/{id}', [RegistrationController::class,'test']);//------------------------------
+Route::get('test/{id}/{key}', [RegistrationController::class,'test']);//------------------------------

@@ -564,12 +564,10 @@ class CustomerController extends Controller
             return view('admin.redis_data_view', compact('success'));
         }
         public function redis_view() {
-            $active_users = User::where('is_active', 1)
-            ->where('is_green', 1)
+            $active_users = User::where('is_green', 1)
             ->where('status', 'Active')
             ->whereNull('deleted_at')
             ->where('package_id', 2)
-            ->orderBy('activated_date')
             ->pluck('user_id')
             ->toArray();
             $users_with_exactly_three_helps = HelpStar::select('receiver_id')

@@ -6,7 +6,7 @@ use App\Models\HelpStar;
 class Helper
 
 {
-    public static function generateUniqueUserId() {
+    public  function generateUniqueUserId() {
         do {
             $userId = 'PHC' . mt_rand(100000, 999999); // Generate a random 6-digit number
         } while (User::where('user_id', $userId)->exists()); // Check if the user_id already exists
@@ -14,25 +14,21 @@ class Helper
         return $userId;
     }
 
-    public static function star_active_users() {
-        $active_users = User::where('is_active', 1)
-        ->where('is_green', 1)
+    public  function active_users($package_id,$key) {
+        $active_users = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
-        ->where('package_id', 2)
-        ->where('star_complete', '0')
+        ->where('package_id', $package_id)
+        ->where($key, '0')
+        // ->where('star_complete', '0')
         ->orderBy('activated_date')
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($active_users) || empty($active_users)) {
-            $active_users = ['PHC123456'];
-        }
-        return $active_users;
+        return !empty($active_users) ? $active_users : [self::first_user_id()]; // Return the dynamic ID if no active users
     }
     public function silver_active_users() {
-        $users_with_exactly_three_helps = User::where('is_active', 1)
-        ->where('is_green', 1)
+        $silver_users = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 3)
@@ -41,49 +37,39 @@ class Helper
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($users_with_exactly_three_helps) || empty($users_with_exactly_three_helps)) {
-            $users_with_exactly_three_helps = ['PHC123456'];
-        }
-        return $users_with_exactly_three_helps;
+        return !empty($silver_users) ? $silver_users : [self::first_user_id()]; // Return the dynamic ID if no active users
+
     }
 
     public function gold_active_users() {
-        $gold_helps = User::where('is_active', 1)
-        ->where('is_green', 1)
+        $gold_helps = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 4)
-        ->where('gold_complete', 0)
+        ->where('gold_complete', '0')
         ->orderBy('activated_date')
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($gold_helps) || empty($gold_helps)) {
-            $gold_helps = ['PHC123456'];
-        }
-        return $gold_helps;
+        return !empty($gold_helps) ? $gold_helps : [self::first_user_id()]; // Return the dynamic ID if no active users
     }
    
     public function platinum_active_users() {
-        $platinum_helps = User::where('is_active', 1)
-        ->where('is_green', 1)
+        $platinum_helps = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 5)
-        ->where('platinum_complete', 0)
+        ->where('platinum_complete', '0')
         ->orderBy('activated_date')
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($platinum_helps) || empty($platinum_helps)) {
-            $platinum_helps = ['PHC123456'];
-        }
-        return $platinum_helps;
+        return !empty($platinum_helps) ? $platinum_helps : [self::first_user_id()]; // Return the dynamic ID if no active users
+
     }
 
     public function ruby_active_users() {
-        $ruby_helps = User::where('is_active', 1)
-        ->where('is_green', 1)
+        $ruby_helps = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 6)
@@ -92,16 +78,13 @@ class Helper
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($ruby_helps) || empty($ruby_helps)) {
-            $ruby_helps = ['PHC123456'];
-        }
-        return $ruby_helps;
+        return !empty($ruby_helps) ? $platinum_helps : [self::first_user_id()]; // Return the dynamic ID if no active users
+
     }
 
     public function emerald_active_users() {
         // ('COUNT(*) >= 72 AND COUNT(*) <= 112')
-        $emrald_helps = User::where('is_active', 1)
-        ->where('is_green', 1)
+        $emrald_helps = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 7)
@@ -110,17 +93,14 @@ class Helper
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($emrald_helps) || empty($emrald_helps)) {
-            $emrald_helps = ['PHC123456'];
-        }
-        return $emrald_helps;
+        return !empty($emrald_helps) ? $emrald_helps : [self::first_user_id()]; // Return the dynamic ID if no active users
+
     }
 
 
     public function diamond_active_users() { 
         //('COUNT(*) >= 112 AND COUNT(*) <= 162')
-        $diamond_helps = User::where('is_active', 1)
-        ->where('is_green', 1)
+        $diamond_helps = User::where('is_green', 1)
         ->where('status', 'Active')
         ->whereNull('deleted_at')
         ->where('package_id', 8)
@@ -129,13 +109,11 @@ class Helper
         ->limit(10) // Apply limit early
         ->pluck('user_id') // Fetch only user_id
         ->toArray();
-        if (!is_array($diamond_helps) || empty($diamond_helps)) {
-            $diamond_helps = ['PHC123456'];
-        }
-        return $diamond_helps;
+        return !empty($diamond_helps) ? $diamond_helps : [self::first_user_id()]; // Return the dynamic ID if no active users
+
     }
 
-    public static function star_level_transaction($userId){  
+    public  function star_level_transaction($userId){  
         self::seven_level_sponser_transaction($user_id);
 
         $data = self::star_active_users();
@@ -218,17 +196,20 @@ class Helper
         ];
         return $success;
     }
+    public function first_user_id() {
+        $firstUser = User::first();
+        if ($firstUser) {
+            return $firstUser->user_id;
+        }
+        return null; // Return null if no user is found
+    }
 
-    public static function seven_level_sponser_transaction($user_id){
+    public  function seven_level_sponser_transaction($user_id){
         $user = User::where('user_id',$user_id)->select('user_id','sponsor_id','id')->with('sponsor')->first();
         $user_id_sender = $user_id;
         /**
          *Implement the 7-level transaction logic start
         */ 
-        $levels = [100, 50, 40, 20, 20, 10, 10];
-        $sponsorId = $user->sponsor_id;
-        $userId = $user->user_id;
-        $adminId = 'PHC123456'; // The admin ID to be used if a sponsor is not found
         $sponsorIds = [];
 
         for ($i = 0; $i < 7; $i++) {
@@ -236,21 +217,20 @@ class Helper
                 $sponsorIds[] = $user->sponsor->user_id;
                 $user = $user->sponsor;
             } else {
-                $sponsorIds[] = $adminId;
+                $sponsorIds[] = self::first_user_id(); // Dynamic admin ID
                 $user = null; // Exit if no further sponsors are found
             }
         }
-
         $sevenLevelTransaction = SevenLevelTransaction::create([
-            'sender_id' => $userId,
+            'sender_id' => $user_id,
             'first_level' => $sponsorIds[0],
-            'second_level' => $sponsorIds[1],
-            'third_level' => $sponsorIds[2],
-            'fourth_level' => $sponsorIds[3],
-            'five_level' => $sponsorIds[4],
-            'six_level' => $sponsorIds[5],
+            'second_level' => $sponsorIds[1] ?? null,
+            'third_level' => $sponsorIds[2] ?? null,
+            'fourth_level' => $sponsorIds[3] ?? null,
+            'five_level' => $sponsorIds[4] ?? null,
+            'six_level' => $sponsorIds[5] ?? null,
             'seven_level' => $sponsorIds[6],
-            'extra_details' => implode(', ', $levels),
+            'extra_details' => implode(', ', [100, 50, 40, 20, 20, 10, 10]),
             'status' => '1'
         ]);
         return $user_id;
@@ -280,22 +260,26 @@ class Helper
     }
 
     public function sponser_help($user_id,$amount){
-        $user = User::where('user_id',$user_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
-       print_r($user);
-        $sponsor_id = isset($user->sponsor_id) ? $user->sponsor_id : 'PHC123456';
-        $package_id = isset($user->package_id) ? $user->package_id : '1';
-        $sponsor_package_id = User::where('user_id',$sponsor_id)->where('is_active','Active')->select('sponsor_id','package_id')->first();
-        if(!empty($sponsor_package_id && isset($sponsor_package_id))){
-           $sponser_id =  $sponsor_package_id->package_id;
-        }else{
-           $sponser_id =  'PHC123456';
+        $user = User::where('user_id',$user_id)->select('sponsor_id','package_id')->first();
+        if (!$user) {
+            // Handle case where the user is not found
+            throw new \Exception("User not found: " . $user_id);
+        }
+        $sponsor_id = $user->sponsor_id ?? self::first_user_id(); // Use null coalescing operator
+        $package_id = $user->package_id ?? '1'; // Default package_id
+
+        $sponsor = User::where('user_id',$sponsor_id)->select('sponsor_id','package_id')->first();
+         
+        if (!$sponsor) {
+            // Handle case where the sponsor is not found
+            throw new \Exception("Sponsor not found: " . $sponsor_id);
         }
         $sponser_help = new HelpStar();
         $sponser_help->sender_id = $user_id;
         $sponser_help->receiver_id =  $sponsor_id; // Payment goes to admin
         $sponser_help->amount = $amount; // Use the help amount from the package
-        $sponser_help->sender_position =$package_id;
-        $sponser_help->receiver_position =$sponser_id;
+        $sponser_help->sender_position =$user->package_id;
+        $sponser_help->receiver_position =$sponsor->package_id;
         $sponser_help->received_payments_count = 1;
         $sponser_help->commitment_date = now();
         $sponser_help->confirm_date = null;

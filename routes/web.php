@@ -1018,4 +1018,5 @@ Route::get('admin/clear-database', [ClearDatabaseController::class,'index'])
 Route::get('active-users', [CustomerControllerForAdmin::class,'active_users']);//dome
 Route::get('get-sponser/{id}', [CustomerControllerForAdmin::class,'get_sponser']);//dome
 Route::get('admin_redis_view', [CustomerControllerForAdmin::class,'redis_view'])->name('redis');//dome
+Route::get('set_redis', [CustomerControllerForAdmin::class,'set_redis'])->name('set_redis');//dome
 Route::get('test', [CustomerControllerForAdmin::class,'test'])->name('test');//dome
