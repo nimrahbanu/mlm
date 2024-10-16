@@ -1,10 +1,10 @@
 <?php
 
 namespace App\Console;
-use App\Jobs\UpdateUserStatus; // Import your job
+// use App\Jobs\UpdateUserStatus; // Import your job
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
-
+use App\Console\Commands\UpdateUserStatus;
 class Kernel extends ConsoleKernel
 {
     /**
@@ -15,8 +15,8 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->job(new UpdateUserStatus())->everyMinute();
-        // $schedule->command('users:update-status')->everyMinute(); 
+        // $schedule->job(new UpdateUserStatus())->everyMinute();
+        $schedule->command('users:update-status')->everyMinute(); 
           // $schedule->command('inspire')->hourly();
     }
 

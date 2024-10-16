@@ -1066,9 +1066,7 @@ class CustomerAuthController extends BaseController
     // }
     private function seven_level_transaction($user_id) {
         $restricted_user_ids = [
-            'PHC123456', 'PHC674962', 'PHC636527', 'PHC315968', 
-            'PHC985875', 'PHC746968', 'PHC666329', 'PHC415900', 
-            'PHC173882', 'PHC571613', 'PHC663478', 'PHC875172'
+            'PHC123456'
         ];
         
         if (in_array($user_id, $restricted_user_ids)) {
@@ -1111,22 +1109,50 @@ class CustomerAuthController extends BaseController
                 if ($seven_level_transaction->$level) {
                     // Fetch the user details for each level if the level has a value
                     $user = User::where('user_id', $seven_level_transaction->$level)
-                        ->select('name', 'phone', 'phone_pay_no', 'user_id')->first();
-    
+                        ->select('id','name', 'phone', 'phone_pay_no', 'user_id','status')->first();
+                        if ($user) {
+                            // Check if the user is blocked
+                            if ($user->status === 'Block') {
+                                // Populate with admin details instead
+                                $level_data = [
+                                    'name' => 'Admin', // Replace with actual admin name or method to fetch it
+                                    'phone' => '7793814798', // Replace with actual admin phone or method
+                                    'phone_pay_no' => '7793814798', // Admin usually does not have this
+                                    'user_id' => 'PHC123456', // No user_id for admin
+                                    'amount' => $amounts[$index],
+                                    'level' => $levels[$index],
+                                ];
+                            } else {
+                                // Check if user_id is in the restricted list
+                                if (in_array($user->user_id, $restricted_user_ids)) {
+                                    $user->phone_pay_no = null; // Hide phone_pay_no for restricted users
+                                }
+        
+                                // Assign user data to the level_data array
+                                $level_data = [
+                                    'name' => $user->name,
+                                    'phone' => $user->phone,
+                                    'phone_pay_no' => $user->phone_pay_no,
+                                    'user_id' => $user->user_id,
+                                    'amount' => $amounts[$index],
+                                    'level' => $levels[$index],
+                                ];
+                            }
+                        }
                     // Check if the user_id is in the restricted list
-                    if ($user && in_array($user->user_id, $restricted_user_ids)) {
-                        $user->phone_pay_no = null; // Hide phone_pay_no for restricted users
-                    }
+                    // if ($user && in_array($user->user_id, $restricted_user_ids)) {
+                    //     $user->phone_pay_no = null; // Hide phone_pay_no for restricted users
+                    // }
     
-                    // Assign data to the level_data array
-                    $level_data = [
-                        'name' => $user ? $user->name : null,
-                        'phone' => $user ? $user->phone : null,
-                        'phone_pay_no' => $user ? $user->phone_pay_no : null,
-                        'user_id' => $user ? $user->user_id : null,
-                        'amount' => $amounts[$index],
-                        'level' => $levels[$index],
-                    ];
+                    // // Assign data to the level_data array
+                    // $level_data = [
+                    //     'name' => $user ? $user->name : null,
+                    //     'phone' => $user ? $user->phone : null,
+                    //     'phone_pay_no' => $user ? $user->phone_pay_no : null,
+                    //     'user_id' => $user ? $user->user_id : null,
+                    //     'amount' => $amounts[$index],
+                    //     'level' => $levels[$index],
+                    // ];
                 }
             }
     

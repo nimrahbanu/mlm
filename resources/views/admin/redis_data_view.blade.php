@@ -26,7 +26,7 @@
                 <tbody>
                     @foreach($success['arraydata'] as $user_id)
                     <tr>
-                        <td>
+                        <td> 
                             @if($success['lastUserId'] == $user_id)
                             <b class="bg-warning p-2" title="star transaction">{{ $user_id }}</b>
                             @else
@@ -50,6 +50,31 @@
             </table>
         </div>
     
+        <p> redis ID</p>
+        <ul>
+            <li>
+                first level : {{$success['a1']}}
+            </li>
+            <li>
+                second level : {{$success['a2']}}
+            </li>
+            <li>
+                third level : {{$success['a3']}}
+            </li>
+            <li>
+                fourth level : {{$success['a4']}}
+            </li>
+            <li>
+                fives level : {{$success['a5']}}
+            </li>
+            <li>
+                six level : {{$success['a6']}}
+            </li>
+
+            <li>
+                seven level : {{$success['a7']}}
+            </li>
+        </ul>
             <!-- @foreach($success['third_level_users'] as $third_level_users)
             
                 <p >  {{$third_level_users}}  </p>

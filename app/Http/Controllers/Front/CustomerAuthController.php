@@ -85,77 +85,7 @@ class CustomerAuthController extends Controller
     public function registration() {
     	return view('front.user.customer_registration');
     }
-    public function registration_store(Request $request) {
-        if(env('PROJECT_MODE') == 0) {
-            return redirect()->back()->with('error', env('PROJECT_NOTIFICATION'));
-        }
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required',
-            're_password' => 'required|same:password',
-            'sponsor_id' => 'nullable|exists:users,id',
-            "phone" => "required|numeric",
-            "phone_pay_no" => "required|numeric",
-            "confirm_phone_pay_no"=>"required|same:phone_pay_no",
-            "registration_code" => "required|unique:users,registration_code"
-        ], [
-            'name.required' => ERR_NAME_REQUIRED,
-            'email.required' => ERR_EMAIL_REQUIRED,
-            'email.email' => ERR_EMAIL_INVALID,
-            'password.required' => ERR_PASSWORD_REQUIRED,
-            're_password.required' => ERR_RE_PASSWORD_REQUIRED,
-            're_password.same' => ERR_PASSWORDS_MATCH,
-            'registration_code.required' => 'The registration code is required.',
-            'registration_code.unique' => 'The registration code has already been used.'
-        ]);
-        try{
-            $sponsor = User::find($request->sponsor_id);
-      
-        if ($sponsor && $sponsor->is_active == '0') {
-            $sponsor->update([
-                'is_active' => '1',
-                'package_id' => '1',
-                'activated_date' => now()
-            ]);
-        }
-
-        if ($request->has('registration_code')) {
-            $epin = EPinTransfer::where('e_pin', $request->registration_code)
-                ->where('is_used', '0')
-                ->first();
-                $token = hash('sha256',time());
-
-                if ($epin) {
-                    $userId = $this->generateUniqueUserId();
-                    $epin->is_used = '1';
-                    $epin->save();
-                    $data = $request->only((new User)->getFillable());
-                    $data['password'] = Hash::make($request->password);
-                    $data['token'] = $token;
-                    $data['status'] = 'InActive';
-                    $data['sponsor_id'] = $request->sponsor_id ?? '100001';
-                    $data['user_id'] = $userId;
-
-                    $user = User::create($data);
-                    if ($user) {
-                        return redirect()->back()->with('success', 'User registered successfully');
-                    } else {
-                        return redirect()->back()->with('error', 'Unable to register. Please try again.');
-                    }
-                } else {
-                    return redirect()->back()->with('error', 'Invalid Registration code.');
-                }
-            } else {
-                return redirect()->back()->with('error', 'Registration code not provided.');
-            }
-        } catch (\Exception $e) {
-            dd($e);
-            return redirect()->back()->with('error', 'Unable to register. Please try again.');
-
-        }
-
-    }
+  
 
     private function generateUniqueUserId() {
         do {

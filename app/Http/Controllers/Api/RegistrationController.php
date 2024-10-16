@@ -57,7 +57,6 @@ class RegistrationController extends BaseController
     
 
     public function registration_store(Request $request) {
-        UpdateUserStatus::dispatch();
         $firstUserId = $this->first_user_id(); // Call the function to get the first user ID
       
         $token = hash('sha256',time());
@@ -189,7 +188,7 @@ class RegistrationController extends BaseController
            $this->level_upgrade_to_silver_users($receiverUserId);
         }
 
-        if ($helpReceived_count < 3) {  //0 <= 3
+        if ($helpReceived_count < 4) {  //0 <= 3
         // Create a new HelpStar entry
             $this->createHelpStarEntry($userId, $receiverUserId, $receiverPackage, $helpReceived_count);
         }else{
@@ -271,7 +270,7 @@ class RegistrationController extends BaseController
         // if($helpReceived_count  == 8){
         //     $this->re_entry_payment_to_admin($userId,300); // send payment to admin 1 time
         // }
-        if ($helpReceived_count < 9) {   
+        if ($helpReceived_count < 10) {   
             // Create a new HelpStar entry
             $data = new HelpStar();
             $data->sender_id = $userId;
@@ -354,7 +353,7 @@ class RegistrationController extends BaseController
             // }
             
         }
-        if ($helpReceived_count < 10) {  //0 <= 3
+        if ($helpReceived_count < 11) {  //0 <= 3
             // Create a new Help Gold entry
 
             $data = new HelpStar();
@@ -437,7 +436,7 @@ class RegistrationController extends BaseController
             // }
             
         }
-        if ($helpReceived_count < 20) {  //0 <= 3
+        if ($helpReceived_count < 21) {  //0 <= 3
             // Create a new Help Platinum entry
 
             $data = new HelpStar();
@@ -526,7 +525,7 @@ class RegistrationController extends BaseController
                 $this->re_entry_payment_to_admin($userId,300);  // send payment to admin
             }
         }
-        if ($helpReceived_count < 30) {  //0 <= 3
+        if ($helpReceived_count < 31) {  //0 <= 3
             // Create a new HelpStar entry
 
             $data = new HelpStar();
@@ -607,7 +606,7 @@ class RegistrationController extends BaseController
             }
             
         }
-        if ($helpReceived_count < 40) {  //0 <= 3
+        if ($helpReceived_count < 41) {  //0 <= 3
             // Create a new Help Emrald entry
 
             $data = new HelpStar();
@@ -673,7 +672,7 @@ class RegistrationController extends BaseController
         
             Helper::sponser_help($userId,'1000000');
         }
-        if ($helpReceived_count < 50) {  //0 <= 3
+        if ($helpReceived_count < 51) {  //0 <= 3
             // Create a new Help Diamond entry
             $data = new HelpStar();
             $data->sender_id = $userId;

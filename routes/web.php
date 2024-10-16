@@ -66,6 +66,7 @@ Route::get('/dream_life_login', function () {
     return view('admin.dream_life_login');
 });
 
+ 
 
 Route::post('currency', [CurrencyControllerForFront::class,'index'])
     ->name('front_currency');
@@ -192,6 +193,7 @@ Route::post('customer/reset-password/update', [CustomerAuthController::class,'re
 Route::get('customer/dashboard', [CustomerControllerForFront::class,'dashboard'])
     ->name('customer_dashboard');
 
+    
 Route::get('customer/taking-help', [CustomerControllerForFront::class,'taking_help'])
 ->name('taking_help');
     
@@ -867,6 +869,8 @@ Route::get('admin/news-status/{id}', [FaqControllerForAdmin::class,'news_change_
 
 Route::get('admin/department', [FaqControllerForAdmin::class,'department'])->name('department');
 Route::get('admin/department-status/{id}', [FaqControllerForAdmin::class,'department_status']);
+Route::get('admin/update-redis/{id}', [DashboardControllerForAdmin::class,'updateRedis']);
+
 Route::get('admin/department-create', [FaqControllerForAdmin::class,'department_create'])->name('department_create');
 Route::post('admin/department-store', [FaqControllerForAdmin::class,'department_store'])->name('department_store');
 

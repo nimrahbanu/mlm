@@ -567,9 +567,30 @@ class CustomerController extends Controller
             $active_users = User::where('is_green', 1)
             ->where('status', 'Active')
             ->whereNull('deleted_at')
-            ->where('package_id', 2)
+            // ->where('package_id', 2)
             ->pluck('user_id')
             ->toArray();
+            $lastUserId = Redis::get('last_user_id');
+            $second = Redis::get('silver_level_user_id');
+            $third = Redis::get('gold_level_last_user_id');
+            $four = Redis::get('platinum_level_last_user_id');
+            $five = Redis::get('ruby_level_last_user_id');
+            $six = Redis::get('emrald_level_last_user_id');
+            $seven = Redis::get('diamond_level_last_user_id');
+
+             
+            // $success = [
+            //     'active_users' => $active_users,
+            //     'lastUserId' => $lastUserId,
+            //     'second' => $second,
+            //     'third' => $third,
+            //     'four' => $four,
+            //     'five' => $five,
+            //     'six' => $six,
+            //     'seven' => $seven,
+            // ];
+            // // dd($success);
+            // return view('admin.redis_data_view', compact('success'));
             $users_with_exactly_three_helps = HelpStar::select('receiver_id')
                 ->whereIn('receiver_id', $active_users)
                 ->groupBy('receiver_id')
@@ -586,9 +607,7 @@ class CustomerController extends Controller
             ->orderBy('activated_date')
             ->pluck('user_id')
             ->toArray();
-                $data =   User::where('is_active', 1)
-                ->where('is_green', 1)
-                ->where('status', 'Active')
+                $data =   User::where('status', 'Active')
                 ->whereNull('deleted_at')
                 ->where('package_id','>=', 2)
                 ->orderBy('activated_date')
@@ -601,37 +620,37 @@ class CustomerController extends Controller
                 ->get()
                 ->groupBy('receiver_id');
 
-                $HelpSilver = HelpSilver::whereIn('receiver_id', $data)
+                $HelpSilver = HelpStar::whereIn('receiver_id', $data)
                 ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
                 ->groupBy('receiver_id');
 
-                $HelpGold = HelpGold::whereIn('receiver_id', $data)
+                $HelpGold = HelpStar::whereIn('receiver_id', $data)
                 ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
                 ->groupBy('receiver_id');
 
-                $HelpPlatinum = HelpPlatinum::whereIn('receiver_id', $data)
+                $HelpPlatinum = HelpStar::whereIn('receiver_id', $data)
                 ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
                 ->groupBy('receiver_id');
 
-                $HelpRuby = HelpRuby::whereIn('receiver_id', $data)
+                $HelpRuby = HelpStar::whereIn('receiver_id', $data)
                 ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
                 ->groupBy('receiver_id');
 
-                $HelpEmrald = HelpEmrald::whereIn('receiver_id', $data)
+                $HelpEmrald = HelpStar::whereIn('receiver_id', $data)
                 ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
                 ->groupBy('receiver_id');
 
-                $HelpDiamond = HelpDiamond::whereIn('receiver_id', $data)
+                $HelpDiamond = HelpStar::whereIn('receiver_id', $data)
                 ->select('receiver_id', 'receiver_position', DB::raw('count(*) as count'))
                 ->groupBy('receiver_id', 'receiver_position')
                 ->get()
@@ -654,7 +673,14 @@ class CustomerController extends Controller
             // Retrieve the last processed user ID from Redis
             $lastUserId = Redis::get('last_user_id');
             $third_level_last_user_id = Redis::get('third_level_last_user_id');
-        
+            $a1 = Redis::get('last_user_id');
+            $a2 = Redis::get('silver_level_user_id');
+            $a3 = Redis::get('gold_level_last_user_id');
+            $a4 = Redis::get('platinum_level_last_user_id');
+            $a5 = Redis::get('ruby_level_last_user_id');
+            $a6 = Redis::get('emrald_level_last_user_id');
+            $a7 = Redis::get('diamond_level_last_user_id');
+
             // Prepare the data to be passed to the view
             $success = [
                 'arraydata' => $data,
@@ -667,8 +693,16 @@ class CustomerController extends Controller
                 'emrald' => $emrald,
                 'diamond' => $diamond,
                 'third_level_users' =>$third_level_users,
-                'third_level_last_user_id' =>$third_level_last_user_id
+                'third_level_last_user_id' =>$third_level_last_user_id,
+                'a1' =>$a1,
+                'a2' =>$a2,
+                'a3' =>$a3,
+                'a4' =>$a4,
+                'a5' =>$a5,
+                'a6' =>$a6,
+                'a7' =>$a7,
             ];
+            return view('admin.redis_data_view', compact('success'));
             // $active_users =   HelpStar::select('receiver_id')->count(3);
 
             // $active_users =   $active_users ?  $active_users : ['PHC123456'];
@@ -712,11 +746,95 @@ class CustomerController extends Controller
             // ->pluck('user_id') // Fetch only user_id
             // ->toArray();
         
-            return view('admin.redis_data_view', compact('success'));
       }
       public function test(Request $request){
-        dd(1);
     
+
+
+        // $sponsor_ids = User::where('is_green', '1')
+        //   ->where('status', 'InActive')
+        //   ->pluck('sponsor_id'); // Get only the sponsor_id values
+        //     // Log the sponsor IDs
+        
+        //     // Update users with those sponsor_ids to active 
+        //     // Updating User Statuses
+        //   $a =  User::whereIn('user_id', $sponsor_ids)
+        //         ->update(['status' => 'active']);
+         
+
+        //     $levels = [
+        //         'first_level',
+        //         'second_level',
+        //         'third_level',
+        //         'fourth_level',
+        //         'five_level',
+        //         'six_level',
+        //         'seven_level',
+        //     ];
+    
+            // Fetch user IDs that are inactive and not green
+            $user_ids = User::where('is_green', '0')
+                ->where('status', 'InActive')
+                ->pluck('user_id');
+
+    
+            // Get users who have given help and confirmed it
+            $giving_users = HelpStar::whereIn('sender_id', $user_ids)
+                ->whereNotNull('confirm_date')
+                ->pluck('sender_id'); // Fetch sender IDs
+            dd(  '....',$giving_users,'...');
+
+            foreach ($giving_users as $user_id) {
+                // Check if the user has confirmed transactions for all levels
+                $allLevelsConfirmed = true; // Assume true initially
+        
+                foreach ($levels as $level) {
+                    // Check if there is a confirm date for this level for the current user
+                    $levelConfirmed = SevenLevelTransaction::where('sender_id', $user_id)
+                        ->whereNotNull($level . '_confirm_date')
+                        ->exists(); // Use exists to check for presence
+            dd(  $levelConfirmed);
+                }}
+            // Iterate through levels and update users accordingly
+            // foreach ($levels as $level) {
+            //     foreach ($giving_users as $user_id) {
+            //         $seven_level_users = SevenLevelTransaction::where('sender_id', $user_id)
+            //             ->whereNotNull($level . '_confirm_date')
+            //             ->pluck('sender_id');
+    
+            //         // Update users to is_green = 1 if they qualify
+            //         if ($seven_level_users->isNotEmpty()) {
+            //             User::where('user_id', $user_id)
+            //                 ->update(['is_green' => 1]);
+            //             Log::info('User statuses updated successfully for is_green.',$seven_level_users->toArray());
+            //         }
+            //     }
+            // }
+
+            foreach ($giving_users as $user_id) {
+                // Check if the user has confirmed transactions for all levels
+                $allLevelsConfirmed = true; // Assume true initially
+        
+                foreach ($levels as $level) {
+                    // Check if there is a confirm date for this level for the current user
+                    $levelConfirmed = SevenLevelTransaction::where('sender_id', $user_id)
+                        ->whereNotNull($level . '_confirm_date')
+                        ->exists(); // Use exists to check for presence
+            dd(  $levelConfirmed);
+        
+                    // If any level is not confirmed, set flag to false and break
+                    if (!$levelConfirmed) {
+                        $allLevelsConfirmed = false;
+                        break; // No need to check further levels for this user
+                    }
+                }
+                if ($allLevelsConfirmed) {
+                    User::where('user_id', $user_id)
+                        ->update(['is_green' => 1]);
+                }
+            }
+
+
         $user_id = 'PHC123456';
         $userData = User::where('user_id',$user_id);
         $user = $userData->with('package:id,package_name')
