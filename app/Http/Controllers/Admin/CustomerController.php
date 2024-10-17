@@ -749,7 +749,81 @@ class CustomerController extends Controller
       }
       public function test(Request $request){
     
+        $sponsor_ids = User::where('is_green', '1')
+        ->where('status', 'InActive')
+        ->pluck('sponsor_id'); // Get only the sponsor_id values
 
+      
+          // Update users with those sponsor_ids to active 
+          // Updating User Statuses
+          User::whereIn('user_id', $sponsor_ids)
+              ->update(['status' => 'active']);
+     
+         
+
+          $levels = [
+              'first_level',
+              'second_level',
+              'third_level',
+              'fourth_level',
+              'five_level',
+              'six_level',
+              'seven_level',
+          ];
+  
+          // Fetch user IDs that are inactive and not green
+          $user_ids = User::where('is_green', '0')
+              ->where('status', 'InActive')
+              ->pluck('user_id');
+            
+          // Get users who have given help and confirmed it
+          $giving_users = HelpStar::whereIn('sender_id', $user_ids)
+              ->whereNotNull('confirm_date')
+              ->pluck('sender_id'); // Fetch sender IDs
+             
+  
+          // Iterate through levels and update users accordingly
+       
+        foreach ($giving_users as $user_id) {
+            
+            // Check if the user has confirmed transactions for all levels
+            $confirmedLevelsCount = SevenLevelTransaction::where('sender_id', $user_id)
+            ->whereNotNull($levels[0] . '_confirm_date')
+            ->whereNotNull($levels[1] . '_confirm_date')
+            ->whereNotNull($levels[2] . '_confirm_date')
+            ->whereNotNull($levels[3] . '_confirm_date')
+            ->whereNotNull($levels[4] . '_confirm_date')
+            ->whereNotNull($levels[5] . '_confirm_date')
+            ->whereNotNull($levels[6] . '_confirm_date')
+            ->count();
+            if ($confirmedLevelsCount === 1) {
+           
+                User::where('user_id', $user_id)
+                    ->update(['is_green' => 1]);
+            }
+        }
+
+        //   foreach ($giving_users as $user_id) {
+        //       // Check if the user has confirmed transactions for all levels
+        //       $allLevelsConfirmed = true; // Assume true initially
+      
+        //       foreach ($levels as $level) {
+        //           // Check if there is a confirm date for this level for the current user
+        //           $levelConfirmed = SevenLevelTransaction::where('sender_id', $user_id)
+        //               ->whereNotNull($level . '_confirm_date')
+        //               ->exists(); // Use exists to check for presence
+      
+        //           // If any level is not confirmed, set flag to false and break
+        //           if (!$levelConfirmed) {
+        //               $allLevelsConfirmed = false;
+        //               break; // No need to check further levels for this user
+        //           }
+        //       }
+        //       if ($allLevelsConfirmed) {
+        //           User::where('user_id', $user_id)
+        //               ->update(['is_green' => 1]);
+        //       }
+        //   }
 
         // $sponsor_ids = User::where('is_green', '1')
         //   ->where('status', 'InActive')

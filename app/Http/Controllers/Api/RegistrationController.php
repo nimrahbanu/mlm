@@ -132,7 +132,7 @@ class RegistrationController extends BaseController
                             'sponsor_id'      => @$data['sponsor_id'],
                             'phone_pay_no'      => @$data['phone_pay_no'],
                         ];
-                        Mail::to($request->email)->send(new AppRegistrationMail($mailBody));
+                        // Mail::to($request->email)->send(new AppRegistrationMail($mailBody));
                         DB::commit();
                             
                             return $this->sendResponse($data, 'User registered successfully');

@@ -10,8 +10,9 @@ use Illuminate\Support\Facades\Redis;
         </div>
     </div>
     <button class=" btn btn-success mb-2" onclick="updateRedis('cron',null)">
-                            Dispatch cron
-                        </button>
+            Dispatch cron
+    </button>
+  
     <!-- Box Start -->
     <div class="row dashboard-page">
 
@@ -176,6 +177,10 @@ use Illuminate\Support\Facades\Redis;
 
             </li>
         </ul>
+
+        <button class=" btn btn-danger  mb-2" onclick="updateRedis('database',null)">
+          Database Clear
+    </button>
 <script>
     // function updateRedis(level, userId) {
     //     fetch('/update-redis', {

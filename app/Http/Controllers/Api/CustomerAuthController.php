@@ -752,9 +752,12 @@ class CustomerAuthController extends BaseController
      
 
     public function dashboard(Request $request){
+        dd($request->all());
+
         $validator = Validator::make($request->all(),[
             'user_id' => 'required|exists:users,user_id',
         ]);
+
         if($validator->fails()){
             return $this->sendError($validator->errors()->first());
         }
@@ -769,6 +772,7 @@ class CustomerAuthController extends BaseController
          $user = User::where('user_id', $user_id)
             ->with('package:id,package_name')
             ->first();
+            dd($user);
         if (!$user) {
             return $this->sendError('User not found.');
         }
@@ -2486,7 +2490,7 @@ public function taking_transaction($user_id) {
                     $success['name']  = $obj->name;
                     $success['email'] = $obj->email;
 
-                    Mail::to($obj->email)->send(new AppPasswordResendMail($mailBody));
+                    // Mail::to($obj->email)->send(new AppPasswordResendMail($mailBody));
                     // return $this->sendResponse($success, 'Otp resent successfully.');
                     $success['mobile'] = $mobileNo;
                     $success['otp'] = $otpNo;
